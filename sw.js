@@ -1,6 +1,6 @@
-/* LocalSync v8 – offline shell only. Never cache peer signaling or user data. */
+/* LocalSync v9 – offline shell only. PeerJS CDN and signaling stay network-only. */
 'use strict';
-const CACHE_NAME = 'localsync-shell-v8';
+const CACHE_NAME = 'localsync-shell-v9';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './css/style.css',
   './js/qr.js', './js/storage.js', './js/files.js', './js/peer.js', './js/app.js',
@@ -32,7 +32,7 @@ self.addEventListener('fetch', event => {
     }));
     return;
   }
-  // Explicit static allowlist; /events and /signal are always network-only.
+  // Explicit static allowlist; neither the PeerJS CDN nor its signaling is cached.
   event.respondWith(fetch(req).then(async response => {
     if (response.ok) {
       try {

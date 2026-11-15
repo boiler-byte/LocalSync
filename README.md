@@ -1,3 +1,33 @@
+# LocalSync v9 – PeerJS Cloud (GitHub Pages kompatibel)
+
+**v9 ersetzt die bisherige HTTP/SSE-Signalisierung.** Der Verbindungsaufbau benötigt nur die statische Web-App und den öffentlichen PeerJS-Cloud-Dienst. Auf GitHub Pages funktionieren damit Session-ID und QR-Einladungslink ohne eigenen Node-Signaling-Server. Das vorhandene **Pull-only-Datenprotokoll** bleibt bestehen. An der App-Oberfläche, an localStorage/IndexedDB, Dateianhängen, Freigaben, Clipboard, PWA und Wake Lock wurde nichts Grundlegendes geändert.
+
+## Installation des Delta v9
+
+`LocalSync-Delta-v9.zip` über eine **vollständige v8-Installation** entpacken und die enthaltenen Dateien überschreiben. Geändert sind `index.html`, `js/peer.js`, `js/app.js`, `sw.js`, `server.js` und `README.md`. **Keine ES-Module.** Neue Datei-Abhängigkeiten gibt es nicht im ZIP; PeerJS wird wie im älteren LocalLink-Projekt in Version `1.5.5` per CDN geladen:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
+```
+
+**Sitzungsablauf:** Das erstellende Gerät registriert eine PeerJS-ID `localsync-<session-id>`. Das beitretende Gerät erhält automatisch eine eigene Peer-ID und verbindet sich mit der Host-ID. Ein Verbindungslink behält das aktuelle App-Verzeichnis, z. B. `https://username.github.io/LocalSync/?room=...`. PeerJS verwaltet Signaling und WebRTC-Angebote. Die PeerJS-Cloud-Adresse (`0.peerjs.com`) muss erreichbar sein. 
+
+**Nur Pull:** Beide Geräte können nur Inhalte der Gegenstelle **anfordern**. Die bereits vorhandenen lokalen Import- und Löschoperationen sind ausschließlich auf dem anfordernden Gerät möglich. localStorage/IndexedDB/Clipboard bleiben standardmäßig gesperrt; Dateianhänge können immer abgerufen werden. Der Host akzeptiert nur eine Gegenstelle gleichzeitig. Die Daten werden nicht in GitHub Pages gespeichert. Bei eingeschränkten Netzwerken kann eine WebRTC-Verbindung ohne passende ICE/TURN-Erreichbarkeit dennoch scheitern.
+
+**GitHub Pages:** Alle Projektdateien (inkl. `js/peer.js`) veröffentlichen; `server.js` muss nicht ausgeführt oder hochgeladen werden. Öffne die HTTPS-Seite und erstelle eine Sitzung. Öffne den QR-Link auf dem anderen Gerät. Nach dem ersten Deployment oder PWA-Update Seite **neu laden**, um `localsync-shell-v9` zu aktivieren. Wenn `PeerJS konnte nicht geladen werden` erscheint, überprüfe den Zugriff auf jsDelivr; lokale PWA-Oberfläche kann offline nutzbar sein, Verbindung nicht.
+
+**Lokal:** Optional `node server.js` und `http://localhost:8787` öffnen. `server.js` liefert in v9 ausschließlich statische Dateien; die alten Endpunkte `/events` und `/signal` sind nicht mehr erforderlich. Ein Einladungslink mit `localhost` funktioniert nur auf demselben Gerät; andere Geräte verwenden eine über das Netzwerk erreichbare HTTPS-Bereitstellung (z. B. GitHub Pages).
+
+**Wichtig zur Privatsphäre:** Die PeerJS Cloud sieht Verbindungsmetadaten und Peer-IDs. Nutzdaten werden über den verschlüsselten WebRTC-Kanal übertragen; bei TURN-Relays kann der verschlüsselte Datenstrom über einen Relayserver laufen. Wer eine Session-ID kennt, kann versuchen beizutreten. Teile Einladungslinks daher nur mit vertrauenswürdigen Geräten. PeerJS Cloud, CDN und STUN/TURN sind externe Dienste.
+
+**Teststand:** JavaScript-Syntax, Link-Erzeugung, Service-Worker-Dateiliste und das Pull-Protokoll werden lokal getestet. Eine echte PeerJS-Cloud-Verbindung zwischen zwei unabhängigen Geräten ist aufgrund der Netzwerksperre dieser Testumgebung nicht verifiziert.
+
+---
+
+## Frühere Versionen (v1–v8, historische Dokumentation)
+
+*Die nachfolgenden Abschnitte beschreiben ältere Versionen. Hinweise auf HTTP/SSE-Signaling, eigene `/events`-/`/signal`-Endpunkte oder „keine externen Bibliotheken“ gelten für v9 nicht mehr.*
+
 # LocalSync · HTML-Prototyp v7
 
 Dark-Mode-App für Browser-Storage, Dateianhänge, Text-Zwischenablage und Pull-Transfers zwischen zwei Geräten. Vanilla HTML, CSS und **klassische JavaScript-Dateien mit `<script>`**; keine ES-Module, kein Bundler, kein `npm install`.

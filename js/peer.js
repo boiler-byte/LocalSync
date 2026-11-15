@@ -1,4 +1,4 @@
-/* LocalSync v4. WebRTC DataChannel; HTTP/SSE only for signaling. No module imports. */
+/* LocalSync v9. PeerJS Cloud signaling + WebRTC DataConnection. Classic script, no ES modules. */
 (function () {
   'use strict';
   const Storage = window.LocalBridgeStorage;
@@ -6,119 +6,163 @@
   const enc = new TextEncoder(), dec = new TextDecoder();
   const CHUNK = 8 * 1024, MAX_TRANSFER = 100 * 1024 * 1024;
   const hex = n => Array.from(crypto.getRandomValues(new Uint8Array(n))).map(x => x.toString(16).padStart(2, '0')).join('');
-  let clientId = hex(12), room = '', eventStream = null, pc = null, channel = null, otherId = null;
-  let connecting = false, connected = false;
+  // The public PeerJS signaling service is used automatically when no host is passed.
+  // Session IDs are secret bearer tokens; prefixing avoids collisions with other PeerJS apps.
+  const PEER_ID_PREFIX = 'localsync-';
+  const ROOM_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9_-]{10,78}[a-zA-Z0-9]$/;
+  let room = '', mode = null, peer = null, connection = null, connected = false;
+  let lifecycle = 0, helloEpoch = 0;
   const incoming = new Map(), requests = new Map();
-  let helloEpoch = 0;
   let permissions = { localStorage: false, indexedDB: false, clipboard: false };
-  let peerInfo = { permissions: { ...permissions }, files: [], localStorage: [], indexedDB: [] };
+  const emptyPeerInfo = () => ({ permissions: { localStorage: false, indexedDB: false, clipboard: false }, files: [], localStorage: [], indexedDB: [] });
+  let peerInfo = emptyPeerInfo();
   const emit = (event, detail) => window.dispatchEvent(new CustomEvent('lb:' + event, { detail }));
-  function isOpen() { return !!channel && channel.readyState === 'open'; }
-  function resetPeer() {
-    connected = false; connecting = false; otherId = null;
-    if (channel) { try { channel.close(); } catch (_) {} }
-    if (pc) { try { pc.close(); } catch (_) {} }
-    channel = null; pc = null; incoming.clear(); requests.clear(); helloEpoch++;
-    peerInfo = { permissions: { localStorage: false, indexedDB: false, clipboard: false }, files: [], localStorage: [], indexedDB: [] };
-    emit('peer-info', peerInfo); emit('connection', { status: 'waiting' });
+  function isOpen() { return !!connection && connection.open === true; }
+  function clearConnection(status) {
+    const previous = connection;
+    connection = null;
+    connected = false;
+    helloEpoch++;
+    incoming.clear();
+    for (const requestId of requests.keys()) emit('request-error', { requestId, reason: 'Verbindung unterbrochen.' });
+    requests.clear();
+    peerInfo = emptyPeerInfo();
+    if (previous) { try { previous.close(); } catch (_) {} }
+    emit('peer-info', peerInfo);
+    emit('connection', { status: status || (mode === 'create' ? 'waiting' : 'disconnected') });
   }
-  function stop() { if (eventStream) eventStream.close(); eventStream = null; resetPeer(); }
-  // Resolve signaling below the application's current directory, also behind subpath reverse proxies.
-  const signalUrl = () => new URL('./signal', location.href).href;
-  const eventsUrl = () => new URL('./events', location.href);
-  async function postSignal(to, payload) {
-    const r = await fetch(signalUrl(), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room, from: clientId, to, payload }) });
-    if (!r.ok) throw Error('Signaling-Server antwortet mit ' + r.status);
+  function stop() {
+    ++lifecycle; // Ignore callbacks from old PeerJS instances.
+    const previousPeer = peer;
+    mode = null; room = '';
+    clearConnection('idle');
+    peer = null;
+    if (previousPeer) { try { previousPeer.destroy(); } catch (_) {} }
   }
-  function createPC() {
-    if (pc) return pc;
-    pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-    pc.onicecandidate = e => { if (e.candidate && otherId) postSignal(otherId, { kind: 'ice', value: e.candidate }).catch(err => emit('peer-error', err.message)); };
-    pc.onconnectionstatechange = () => {
-      if (!pc) return;
-      if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
-        if (connected) resetPeer();
-        else emit('connection', { status: 'waiting' });
-      }
-    };
-    pc.ondatachannel = event => setupChannel(event.channel);
-    return pc;
+  function dataChannel() {
+    return connection && connection.dataChannel;
   }
-  function setupChannel(dc) {
-    channel = dc;
-    dc.binaryType = 'arraybuffer';
-    dc.bufferedAmountLowThreshold = 128 * 1024;
-    dc.onopen = () => { connected = true; emit('connection', { status: 'connected' }); sendHello(); };
-    dc.onclose = () => { if (connected) resetPeer(); };
-    dc.onerror = () => emit('peer-error', 'Fehler im WebRTC-Datenkanal.');
-    dc.onmessage = event => {
-      try { onData(JSON.parse(event.data)); }
-      catch (err) { emit('peer-error', 'Nachricht konnte nicht verarbeitet werden: ' + err.message); }
-    };
-  }
-  async function onSignal(message) {
-    if (!message || message.from === clientId) return;
-    otherId = message.from;
-    const data = message.payload;
-    if (!data || !['offer', 'answer', 'ice'].includes(data.kind)) return;
-    if (data.kind === 'offer') {
-      createPC();
-      await pc.setRemoteDescription(data.value);
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      await postSignal(otherId, { kind: 'answer', value: pc.localDescription });
-      await flushIce();
-    } else if (data.kind === 'answer' && pc) {
-      await pc.setRemoteDescription(data.value);
-      await flushIce();
-    } else if (data.kind === 'ice') {
-      if (!pc || !pc.remoteDescription) iceQueue.push(data.value);
-      else await pc.addIceCandidate(data.value);
+  function bindConnection(conn, generation) {
+    if (generation !== lifecycle || !peer || !conn) { try { conn?.close(); } catch (_) {} return; }
+    // Only one peer may read this device's granted resources at once.
+    if (connection && connection !== conn) { try { conn.close(); } catch (_) {} return; }
+    connection = conn;
+    const dc = dataChannel();
+    if (dc) dc.bufferedAmountLowThreshold = 128 * 1024;
+    conn.on('open', () => {
+      if (generation !== lifecycle || connection !== conn) return;
+      const openedChannel = conn.dataChannel;
+      if (openedChannel) openedChannel.bufferedAmountLowThreshold = 128 * 1024;
+      connected = true;
+      emit('connection', { status: 'connected' });
+      void sendHello();
+    });
+    conn.on('data', message => {
+      if (generation !== lifecycle || connection !== conn) return;
+      try { onData(typeof message === 'string' ? JSON.parse(message) : message); }
+      catch (error) { emit('peer-error', 'Nachricht konnte nicht verarbeitet werden: ' + error.message); }
+    });
+    conn.on('close', () => {
+      if (generation === lifecycle && connection === conn) clearConnection();
+    });
+    conn.on('error', error => {
+      if (generation !== lifecycle || connection !== conn) return;
+      emit('peer-error', 'WebRTC-Verbindung: ' + (error?.message || String(error)));
+      if (!conn.open) clearConnection();
+    });
+    // Some peers open before the handlers can be attached.
+    if (conn.open) {
+      const openedChannel = conn.dataChannel;
+      if (openedChannel) openedChannel.bufferedAmountLowThreshold = 128 * 1024;
+      connected = true;
+      emit('connection', { status: 'connected' });
+      void sendHello();
     }
   }
-  let iceQueue = [];
-  async function flushIce() {
-    if (!pc || !pc.remoteDescription) return;
-    for (const candidate of iceQueue.splice(0)) await pc.addIceCandidate(candidate).catch(() => {});
-  }
-  async function makeOffer(peerId) {
-    if (connecting || pc || connected) return;
-    connecting = true; otherId = peerId;
-    const p = createPC();
-    setupChannel(p.createDataChannel('localsync', { ordered: true }));
-    const offer = await p.createOffer();
-    await p.setLocalDescription(offer);
-    await postSignal(peerId, { kind: 'offer', value: p.localDescription });
-  }
-  function start(newRoom) {
-    stop(); room = newRoom; clientId = hex(12); iceQueue = [];
-    if (!room || !/^[a-zA-Z0-9_-]{12,80}$/.test(room)) { emit('peer-error', 'Ungültige Sitzungs-ID.'); return; }
-    if (!window.RTCPeerConnection || !window.EventSource) { emit('peer-error', 'Dieser Browser unterstützt WebRTC oder SSE nicht.'); return; }
-    if (location.protocol === 'file:') { emit('peer-error', 'Für die Geräteverbindung muss server.js gestartet werden.'); return; }
-    const url = eventsUrl();
-    url.searchParams.set('room', room);
-    url.searchParams.set('client', clientId);
-    eventStream = new EventSource(url.href);
-    eventStream.onopen = () => emit('connection', { status: 'waiting' });
-    eventStream.onerror = () => emit('connection', { status: 'server-error' });
-    eventStream.onmessage = evt => {
+  function start(newRoom, newMode) {
+    stop();
+    if (!ROOM_PATTERN.test(newRoom || '')) { emit('peer-error', 'Ungültige Sitzungs-ID.'); return; }
+    if (newMode !== 'create' && newMode !== 'join') { emit('peer-error', 'Ungültiger Sitzungsmodus.'); return; }
+    room = newRoom; mode = newMode;
+    if (typeof window.Peer !== 'function') {
+      emit('connection', { status: 'server-error' });
+      emit('peer-error', 'PeerJS konnte nicht geladen werden. Internetverbindung oder CDN prüfen.');
+      return;
+    }
+    const generation = lifecycle;
+    try {
+      // As in the older LocalLink app: let PeerJS use its public default signaling server.
+      peer = mode === 'create'
+        ? new window.Peer(PEER_ID_PREFIX + room, { debug: 0 })
+        : new window.Peer({ debug: 0 });
+    } catch (error) {
+      emit('connection', { status: 'server-error' });
+      emit('peer-error', 'PeerJS-Start fehlgeschlagen: ' + error.message);
+      return;
+    }
+    emit('connection', { status: 'starting' });
+    const instance = peer;
+    instance.on('open', () => {
+      if (generation !== lifecycle || peer !== instance) return;
+      if (mode === 'create') {
+        emit('connection', { status: 'waiting' });
+        return;
+      }
+      emit('connection', { status: 'connecting' });
       try {
-        const data = JSON.parse(evt.data);
-        if (data.kind === 'presence') {
-          const other = (data.clients || []).find(id => id !== clientId);
-          if (!other) { if (pc || connected) resetPeer(); return; }
-          if (clientId < other && !pc && !connecting) makeOffer(other).catch(error => emit('peer-error', error.message));
-        } else if (data.kind === 'signal') onSignal(data).catch(error => emit('peer-error', error.message));
-        else if (data.kind === 'room-full') emit('peer-error', 'Dieser Raum ist bereits mit zwei Geräten belegt.');
-      } catch (error) { emit('peer-error', error.message); }
-    };
+        const outgoing = instance.connect(PEER_ID_PREFIX + room, {
+          reliable: true,
+          serialization: 'json',
+          metadata: { app: 'localsync', protocol: 1 }
+        });
+        bindConnection(outgoing, generation);
+      } catch (error) {
+        emit('connection', { status: 'server-error' });
+        emit('peer-error', 'Beitritt fehlgeschlagen: ' + error.message);
+      }
+    });
+    instance.on('connection', incomingConnection => {
+      if (generation !== lifecycle || peer !== instance || mode !== 'create' ||
+        (connection && connection !== incomingConnection) ||
+        incomingConnection.metadata?.app !== 'localsync' || incomingConnection.metadata?.protocol !== 1) {
+        try { incomingConnection.close(); } catch (_) {}
+        return;
+      }
+      bindConnection(incomingConnection, generation);
+    });
+    instance.on('disconnected', () => {
+      if (generation !== lifecycle || peer !== instance) return;
+      // An established DataChannel can remain open when signaling is disconnected.
+      if (!isOpen()) emit('connection', { status: 'server-error' });
+    });
+    instance.on('error', error => {
+      if (generation !== lifecycle || peer !== instance) return;
+      const errorType = error?.type || 'unknown';
+      if (errorType === 'peer-unavailable') {
+        emit('connection', { status: 'peer-unavailable' });
+        emit('peer-error', 'Sitzung nicht gefunden. Der Host muss die Sitzung auf seinem Gerät zuerst erstellen.');
+      } else if (errorType === 'unavailable-id') {
+        emit('connection', { status: 'server-error' });
+        emit('peer-error', 'Diese Session-ID ist bei PeerJS bereits belegt. Bitte eine neue Sitzung erstellen.');
+      } else {
+        if (!isOpen()) emit('connection', { status: 'server-error' });
+        emit('peer-error', 'PeerJS (' + errorType + '): ' + (error?.message || String(error)));
+      }
+    });
+    instance.on('close', () => {
+      if (generation === lifecycle && peer === instance && !isOpen()) emit('connection', { status: 'disconnected' });
+    });
   }
-  function send(message) { if (!isOpen()) return false; channel.send(JSON.stringify(message)); return true; }
+  function send(message) {
+    if (!isOpen()) return false;
+    try { connection.send(JSON.stringify(message)); return true; }
+    catch (error) { emit('peer-error', 'Senden fehlgeschlagen: ' + error.message); return false; }
+  }
   const length = value => enc.encode(String(value)).byteLength;
   async function sendHello() {
     const generation = ++helloEpoch;
     if (!isOpen()) return;
-    const current = channel;
+    const current = connection;
     const granted = { ...permissions };
     const base = { type: 'hello', permissions: granted, files: Files.list(), localStorage: [], indexedDB: [] };
     // Announce permissions quickly, before estimating IndexedDB sizes.
@@ -139,9 +183,9 @@
           base.indexedDB.push({ name: database.name, size });
         }
       }
-      if (generation === helloEpoch && current === channel && isOpen()) send(base);
+      if (generation === helloEpoch && current === connection && isOpen()) send(base);
     } catch (error) {
-      if (generation === helloEpoch && current === channel) emit('peer-error', 'Metadaten konnten nicht vollständig ermittelt werden: ' + error.message);
+      if (generation === helloEpoch && current === connection) emit('peer-error', 'Metadaten konnten nicht vollständig ermittelt werden: ' + error.message);
     }
   }
   function setPermissions(next) {
@@ -150,11 +194,17 @@
   }
   async function throttle() {
     if (!isOpen()) throw Error('Datenkanal geschlossen.');
-    if (channel.bufferedAmount <= 384 * 1024) return;
+    const dc = dataChannel();
+    if (!dc) throw Error('PeerJS DataChannel ist nicht verfügbar.');
+    if (dc.bufferedAmount <= 384 * 1024) return;
     await new Promise((resolve, reject) => {
-      const dc = channel;
       let timer;
-      function finish(err) { dc.removeEventListener('bufferedamountlow', low); dc.removeEventListener('close', closed); clearTimeout(timer); err ? reject(err) : resolve(); }
+      function finish(error) {
+        dc.removeEventListener('bufferedamountlow', low);
+        dc.removeEventListener('close', closed);
+        clearTimeout(timer);
+        error ? reject(error) : resolve();
+      }
       function low() { finish(); }
       function closed() { finish(Error('Verbindung unterbrochen.')); }
       dc.addEventListener('bufferedamountlow', low, { once: true });
@@ -167,12 +217,12 @@
   async function sendBytes(requestId, resource, bytes, fileName) {
     if (bytes.length > MAX_TRANSFER) throw Error('Maximale Transfergröße: 100 MB.');
     const transferId = hex(12), parts = Math.ceil(bytes.length / CHUNK);
-    send({ type: 'transfer-start', transferId, requestId, resource, fileName: fileName || '', parts, size: bytes.length });
+    if (!send({ type: 'transfer-start', transferId, requestId, resource, fileName: fileName || '', parts, size: bytes.length })) throw Error('Verbindung unterbrochen.');
     for (let i = 0; i < parts; i++) {
       await throttle();
-      send({ type: 'transfer-part', transferId, index: i, data: b64(bytes.subarray(i * CHUNK, (i + 1) * CHUNK)) });
+      if (!send({ type: 'transfer-part', transferId, index: i, data: b64(bytes.subarray(i * CHUNK, (i + 1) * CHUNK)) })) throw Error('Verbindung unterbrochen.');
     }
-    send({ type: 'transfer-end', transferId });
+    if (!send({ type: 'transfer-end', transferId })) throw Error('Verbindung unterbrochen.');
   }
   async function serveRequest(message) {
     const resource = message.resource, requestId = message.requestId;

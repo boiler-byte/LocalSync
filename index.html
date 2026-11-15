@@ -48,7 +48,7 @@
 </div>
 </section>
 </main>
-<footer class="footer"><span>LocalSync · Prototype v7</span><span>Nur Daten des aktuellen Origins <span class="footer-sep">•</span> Keine Cloud-Speicherung</span></footer>
+<footer class="footer"><span>LocalSync · Prototype v9</span><span>Nur Daten des aktuellen Origins <span class="footer-sep">•</span> Keine Cloud-Speicherung</span></footer>
 </div>
 </div>
 <dialog aria-describedby="clipboard-description" aria-labelledby="clipboard-title" class="clipboard-dialog" id="clipboard-dialog">
@@ -93,7 +93,7 @@
 <p class="session-security-note">Die Verbindung erlaubt nur das Herunterladen freigegebener Inhalte. Einträge der Gegenstelle werden niemals remote verändert.</p>
 </section>
 </div>
-<p class="dialog-note" id="network-note">Der Server vermittelt den Verbindungsaufbau; Daten werden über einen verschlüsselten WebRTC-Datenkanal übertragen.</p>
+<p class="dialog-note" id="network-note">PeerJS Cloud vermittelt den Verbindungsaufbau. Inhalte werden über einen verschlüsselten WebRTC-Datenkanal übertragen.</p>
 <div class="modal-actions pair-dialog-actions"><button class="text-button" disabled="" id="disconnect-room" type="button">Verbindung trennen</button><button class="outline-button" id="pair-done" type="button">Schließen</button></div>
 </div>
 </div>
@@ -115,6 +115,7 @@
 <script src="js/qr.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/files.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
 <script src="js/peer.js"></script>
 <script src="js/app.js"></script>
 </body>

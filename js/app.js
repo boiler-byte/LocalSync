@@ -722,7 +722,8 @@
   }
   // A session is only created after explicit action. Invitation URLs are auto-joined on load.
   let sessionMode = null; // 'create' | 'join' | null
-  const ROOM_PATTERN = /^[a-zA-Z0-9_-]{12,80}$/;
+  let bridgeConnectionStatus = 'idle';
+  const ROOM_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9_-]{10,78}[a-zA-Z0-9]$/;
   // Use the directory where this app is currently served (also when opened as index.html).
   // This preserves installations below /tools/localsync/ instead of linking to the domain root.
   function appDirectoryUrl(base = location.href) {
@@ -743,7 +744,7 @@
     el('session-role').textContent = created ? 'Sitzung erstellt' : sessionMode === 'join' ? 'Beigetreten' : '—';
     if (created) el('session-id').value = P.getRoom();
     else { el('session-id').value = ''; el('share-link').value = ''; el('qr-code').replaceChildren(); }
-    el('bridge-status').textContent = !active ? 'Nicht verbunden' : P.isOpen() ? 'Verbunden' : 'Warte auf Gegenstelle';
+    el('bridge-status').textContent = !active ? 'Nicht verbunden' : P.isOpen() ? 'Verbunden' : bridgeConnectionStatus === 'server-error' ? 'PeerJS-Signaling nicht erreichbar' : bridgeConnectionStatus === 'peer-unavailable' ? 'Sitzung nicht gefunden' : bridgeConnectionStatus === 'starting' ? 'PeerJS-Sitzung wird gestartet …' : bridgeConnectionStatus === 'connecting' ? 'Verbinde mit Gegenstelle …' : bridgeConnectionStatus === 'disconnected' ? 'Verbindung getrennt' : 'Warte auf Gegenstelle';
   }
   function setRoomUrl(room) {
     if (!['http:', 'https:'].includes(location.protocol)) return;
@@ -753,10 +754,10 @@
     history.replaceState(history.state, '', url.pathname + url.search + url.hash);
   }
   function selectRoom(room, mode) {
-    if (!ROOM_PATTERN.test(room)) throw Error('Ungültige Session-ID. Erwartet werden 12–80 Zeichen (Buchstaben, Zahlen, - oder _).');
+    if (!ROOM_PATTERN.test(room)) throw Error('Ungültige Session-ID. Erwartet werden 12–80 Zeichen (Buchstaben, Zahlen, - oder _; Anfang/Ende alphanumerisch).');
     sessionMode = mode;
     setRoomUrl(room);
-    P.start(room);
+    P.start(room, mode);
     updateSessionUI();
     if (mode === 'create') makeLink();
   }
@@ -768,7 +769,7 @@
     if (window.LocalBridgeQR) window.LocalBridgeQR.render(qr, link, 194);
     el('network-note').textContent = /^(localhost|127\.0\.0\.1)$/.test(new URL(link).hostname)
       ? 'Dieser Link enthält localhost und ist nur auf diesem Gerät erreichbar. Auf dem ersten Gerät LocalSync über eine im Netzwerk erreichbare Adresse öffnen.'
-      : 'WebRTC-Datentransfer ist verschlüsselt. Zwischenablage und PWA benötigen auf weiteren Geräten normalerweise HTTPS.';
+      : 'PeerJS Cloud vermittelt den Verbindungsaufbau; Nutzdaten fließen über WebRTC. Zwischenablage und PWA benötigen normalerweise HTTPS.';
   }
   async function copyValue(value, target, message) {
     if (!value) throw Error('Zuerst eine Sitzung erstellen.');
@@ -795,8 +796,8 @@
     errorBox.textContent = ''; errorBox.classList.add('hidden'); el('join-input').removeAttribute('aria-invalid');
     try {
       const target = parseJoinInput(el('join-input').value);
-      // Signaling is scoped to the current app directory. For invitations from a
-      // different path (even same origin) open that app so both peers use one endpoint.
+      // Open a foreign invitation at its actual URL so the intended app is loaded. For invitations from a
+      // different path (even same origin), navigate to that deployment.
       if (target.url && (target.url.origin !== location.origin ||
           appDirectoryUrl(target.url.href).pathname !== appDirectoryUrl().pathname)) {
         const destination = appDirectoryUrl(target.url.href);
@@ -874,11 +875,12 @@
     window.addEventListener('pagehide', () => setConnectionWakeLock(false));
   }
   function updateConnection(status) {
+    bridgeConnectionStatus = status;
     const online = status === 'connected';
     setConnectionWakeLock(online);
-    el('status-text').textContent = online ? 'Gerät verbunden' : status === 'server-error' ? 'Server nicht erreichbar' : 'Nicht verbunden';
-    el('bridge-status').textContent = !sessionMode ? 'Nicht verbunden' : online ? 'Verbunden' : status === 'server-error' ? 'Signaling nicht erreichbar' : 'Warte auf Gegenstelle';
-    el('status-dot').className = 'status-dot ' + (online ? 'online' : status === 'waiting' ? 'waiting' : '');
+    el('status-text').textContent = online ? 'Gerät verbunden' : status === 'server-error' ? 'Signaling nicht erreichbar' : status === 'peer-unavailable' ? 'Sitzung nicht gefunden' : status === 'starting' || status === 'connecting' ? 'Verbindung läuft' : status === 'waiting' ? 'Warte auf Gegenstelle' : 'Nicht verbunden';
+    el('bridge-status').textContent = !sessionMode ? 'Nicht verbunden' : online ? 'Verbunden' : status === 'server-error' ? 'PeerJS-Signaling nicht erreichbar' : status === 'peer-unavailable' ? 'Sitzung nicht gefunden' : status === 'starting' ? 'PeerJS-Sitzung wird gestartet …' : status === 'connecting' ? 'Verbinde mit Gegenstelle …' : status === 'disconnected' ? 'Verbindung getrennt' : 'Warte auf Gegenstelle';
+    el('status-dot').className = 'status-dot ' + (online ? 'online' : ['waiting', 'starting', 'connecting'].includes(status) ? 'waiting' : '');
     if (!online) { state.remoteInfo = { permissions: {}, files: [], localStorage: [], indexedDB: [] }; state.pending.clear(); }
     updateRemote();
   }
