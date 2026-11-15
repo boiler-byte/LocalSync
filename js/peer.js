@@ -23,8 +23,11 @@
     emit('peer-info', peerInfo); emit('connection', { status: 'waiting' });
   }
   function stop() { if (eventStream) eventStream.close(); eventStream = null; resetPeer(); }
+  // Resolve signaling below the application's current directory, also behind subpath reverse proxies.
+  const signalUrl = () => new URL('./signal', location.href).href;
+  const eventsUrl = () => new URL('./events', location.href);
   async function postSignal(to, payload) {
-    const r = await fetch('/signal', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room, from: clientId, to, payload }) });
+    const r = await fetch(signalUrl(), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room, from: clientId, to, payload }) });
     if (!r.ok) throw Error('Signaling-Server antwortet mit ' + r.status);
   }
   function createPC() {
@@ -92,7 +95,10 @@
     if (!room || !/^[a-zA-Z0-9_-]{12,80}$/.test(room)) { emit('peer-error', 'Ungültige Sitzungs-ID.'); return; }
     if (!window.RTCPeerConnection || !window.EventSource) { emit('peer-error', 'Dieser Browser unterstützt WebRTC oder SSE nicht.'); return; }
     if (location.protocol === 'file:') { emit('peer-error', 'Für die Geräteverbindung muss server.js gestartet werden.'); return; }
-    eventStream = new EventSource('/events?room=' + encodeURIComponent(room) + '&client=' + clientId);
+    const url = eventsUrl();
+    url.searchParams.set('room', room);
+    url.searchParams.set('client', clientId);
+    eventStream = new EventSource(url.href);
     eventStream.onopen = () => emit('connection', { status: 'waiting' });
     eventStream.onerror = () => emit('connection', { status: 'server-error' });
     eventStream.onmessage = evt => {

@@ -176,6 +176,6 @@ button,input,textarea,select{font:inherit}
 #active-room{font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all;font-size:10px;max-width:210px}
 .session-security-note{font-size:10px!important;line-height:1.7!important;color:#829bb1!important;margin:auto 0 0;padding-top:20px}
 .join-error{font-size:11px!important;color:#ffaaa9!important;margin:8px 0 0!important;line-height:1.5!important}
-#join-input[aria-invalid="true"],#bridge-base[aria-invalid="true"]{border-color:#e98797}
+#join-input[aria-invalid="true"]{border-color:#e98797}
 .pair-dialog-actions .text-button:disabled{opacity:.42}
 @media(max-width:760px){.pair-dialog{width:calc(100vw - 18px);max-height:calc(100dvh - 16px)}.pair-session-grid{grid-template-columns:1fr;gap:12px;padding:10px 16px 18px}.session-panel{padding:17px}.session-panel-heading{min-height:auto;padding-bottom:14px}.session-empty{min-height:130px}.session-security-note{padding-top:22px}.dialog-note{padding-left:17px;padding-right:17px}.pair-dialog-actions{padding:0 17px 17px}}

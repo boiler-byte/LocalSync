@@ -101,11 +101,25 @@ Dieses ZIP über die **vollständige v5-Installation** entpacken. Enthalten sind
 
 Der Dialog **Verbindung herstellen** ist in zwei eigenständige Bereiche aufgeteilt:
 
-- **Sitzung erstellen:** Mit **„Neue Sitzung erstellen“** wird eine kryptografisch zufällige Session-ID erzeugt und die SSE-/WebRTC-Signalisierung gestartet. Die ID ist kopierbar, dazu gibt es einen QR-Code und einen Einladungslink samt Kopierbutton. Die Server-Adresse kann für ein anderes Gerät auf eine erreichbare IP oder HTTPS-Domain geändert werden. Ein erneuter Klick erstellt eine neue Sitzung und beendet die vorherige.
-- **Verbindung beitreten:** Eine Session-ID (12–80 Buchstaben/Zahlen/`_`/`-`) oder ein Einladungslink (`http(s)://server/?room=…`) kann eingegeben und mit **„Verbinden“** verwendet werden. Bei einer ID ist die aktuelle Server-Adresse maßgeblich; bei einem Link zu einem anderen Origin navigiert die App auf die Server-Adresse aus dem Link, damit der Signaling-Endpunkt übereinstimmt. Bei gleicher Server-Adresse wird die Sitzung direkt betreten. Ein Aufruf des Einladungslinks tritt der Sitzung weiterhin automatisch bei.
+- **Sitzung erstellen:** Mit **„Neue Sitzung erstellen“** wird eine kryptografisch zufällige Session-ID erzeugt und die SSE-/WebRTC-Signalisierung gestartet. Die ID ist kopierbar, dazu gibt es einen QR-Code und einen Einladungslink samt Kopierbutton. Die Einladungsadresse nutzt automatisch die aktuell geöffnete App-URL. Ein erneuter Klick erstellt eine neue Sitzung und beendet die vorherige.
+- **Verbindung beitreten:** Eine Session-ID (12–80 Buchstaben/Zahlen/`_`/`-`) oder ein Einladungslink (`http(s)://server/pfad/?room=…`) kann eingegeben und mit **„Verbinden“** verwendet werden. Bei einer ID verwendet die App das aktuelle Verzeichnis; bei einem Link zu einem anderen Origin oder Verzeichnis navigiert sie zum vollständigen App-Pfad, damit der Signaling-Endpunkt übereinstimmt. Ein Aufruf des Einladungslinks tritt der Sitzung weiterhin automatisch bei.
 - Ohne gültigen Einladungslink wird beim Seitenstart **keine Sitzung automatisch erzeugt**. „Verbindung trennen“ verlässt die Sitzung. Der Topbar-Status und die Pull-only-Berechtigungen bleiben erhalten.
 - Die PWA-Version erhöht den Service-Worker-Cache auf `localsync-shell-v7`, damit das neue HTML und JavaScript sauber eingespielt werden. Ein vollständiger WebRTC-Test zwischen zwei echten Geräten wird weiterhin empfohlen.
 
 ### Installation als Delta v7
 
 `LocalSync-Delta-v7.zip` auf eine vollständige **v6-Installation** entpacken und die geänderten Dateien überschreiben (`index.html`, `css/style.css`, `js/app.js`, `sw.js` und `README.md`). Die übrigen Dateien bleiben unverändert. Keine ES-Module und keine zusätzlichen Abhängigkeiten.
+
+
+## Neu in v8 · Einladungslinks mit App-Verzeichnis
+
+- Das Eingabefeld **„Erreichbare Server-Adresse“** wurde aus dem Dialog entfernt.
+- Session-Link und QR-Code verwenden jetzt automatisch das **aktuelle Verzeichnis** der App, einschließlich Unterordnern. Beispiel: Aus `https://example.org/tools/localsync/index.html` wird `https://example.org/tools/localsync/?room=SESSION_ID`; ein bestehender `?room`-Parameter wird nicht doppelt angehängt.
+- **Beitreten per Link:** Es werden Links auf `/`, Unterverzeichnisse und jeweilige `index.html`-Dateien akzeptiert. Wenn das Link-Ziel unter einer anderen Domain **oder einem anderen App-Verzeichnis** liegt, wird dorthin navigiert, bevor die Verbindung beigetreten wird. Session-IDs allein verwenden weiterhin das aktuelle App-Verzeichnis.
+- **Signaling:** Die SSE- und POST-Endpunkte werden jetzt relativ zum App-Verzeichnis aufgelöst (`./events`, `./signal`). Bei einem Reverse-Proxy-Deployment in einem Unterverzeichnis müssen diese Endpunkte auf denselben Node-Signaling-Server weitergeleitet werden. Der mitgelieferte `server.js` stellt die App direkt im Stammverzeichnis `/` bereit.
+- **Netzwerkhinweis:** Ein `localhost`-Link funktioniert weiterhin nur auf dem jeweiligen Gerät. Die App muss bereits unter einer von beiden Geräten erreichbaren URL geöffnet sein; HTTPS wird für PWA, Clipboard und Wake Lock auf weiteren Geräten benötigt.
+- Der Service-Worker-Cache wurde auf `localsync-shell-v8` erhöht.
+
+### Installation als Delta v8
+
+`LocalSync-Delta-v8.zip` auf eine vollständige **v7-Installation** entpacken. Enthalten sind `index.html`, `js/app.js`, `js/peer.js`, `css/style.css`, `sw.js` und `README.md`. Sonstige Dateien bleiben unverändert.

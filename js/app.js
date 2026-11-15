@@ -723,12 +723,15 @@
   // A session is only created after explicit action. Invitation URLs are auto-joined on load.
   let sessionMode = null; // 'create' | 'join' | null
   const ROOM_PATTERN = /^[a-zA-Z0-9_-]{12,80}$/;
-  function getBaseUrl() {
-    const url = new URL(el('bridge-base').value.trim() || location.origin);
-    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
-      throw Error('Bitte eine gültige http(s)-Serveradresse ohne Zugangsdaten angeben.');
-    }
-    return url.origin;
+  // Use the directory where this app is currently served (also when opened as index.html).
+  // This preserves installations below /tools/localsync/ instead of linking to the domain root.
+  function appDirectoryUrl(base = location.href) {
+    return new URL('./', base);
+  }
+  function invitationUrl(room) {
+    const url = appDirectoryUrl();
+    url.searchParams.set('room', room);
+    return url.href;
   }
   function updateSessionUI() {
     const active = !!sessionMode;
@@ -759,12 +762,12 @@
   }
   function makeLink() {
     if (sessionMode !== 'create') return;
-    const link = getBaseUrl() + '/?room=' + encodeURIComponent(P.getRoom());
+    const link = invitationUrl(P.getRoom());
     el('share-link').value = link;
     const qr = el('qr-code'); qr.replaceChildren();
     if (window.LocalBridgeQR) window.LocalBridgeQR.render(qr, link, 194);
     el('network-note').textContent = /^(localhost|127\.0\.0\.1)$/.test(new URL(link).hostname)
-      ? 'Für ein zweites Gerät die Server-Adresse oben auf eine erreichbare IP bzw. HTTPS-Domain ändern.'
+      ? 'Dieser Link enthält localhost und ist nur auf diesem Gerät erreichbar. Auf dem ersten Gerät LocalSync über eine im Netzwerk erreichbare Adresse öffnen.'
       : 'WebRTC-Datentransfer ist verschlüsselt. Zwischenablage und PWA benötigen auf weiteren Geräten normalerweise HTTPS.';
   }
   async function copyValue(value, target, message) {
@@ -775,14 +778,16 @@
   }
   function parseJoinInput(value) {
     const text = value.trim();
-    if (ROOM_PATTERN.test(text)) return { room: text, origin: location.origin };
+    if (ROOM_PATTERN.test(text)) return { room: text, url: null };
     let url;
     try { url = new URL(text); } catch (_) { throw Error('Bitte eine gültige Session-ID oder einen Einladungslink eingeben.'); }
     const room = url.searchParams.get('room');
-    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || !['/', '/index.html'].includes(url.pathname) || !room || !ROOM_PATTERN.test(room)) {
+    // Accept nested paths, but only canonical app entry points (directory or index.html).
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password ||
+      !(/\/$/.test(url.pathname) || /\/index\.html$/i.test(url.pathname)) || !room || !ROOM_PATTERN.test(room)) {
       throw Error('Ungültiger Einladungslink. Er muss eine gültige Session-ID als ?room= enthalten.');
     }
-    return { room, origin: url.origin };
+    return { room, url };
   }
   function joinSession(event) {
     event.preventDefault();
@@ -790,9 +795,13 @@
     errorBox.textContent = ''; errorBox.classList.add('hidden'); el('join-input').removeAttribute('aria-invalid');
     try {
       const target = parseJoinInput(el('join-input').value);
-      if (target.origin !== location.origin) {
-        // The signaling endpoint is same-origin. A foreign invitation must be opened on its server.
-        location.assign(target.origin + '/?room=' + encodeURIComponent(target.room));
+      // Signaling is scoped to the current app directory. For invitations from a
+      // different path (even same origin) open that app so both peers use one endpoint.
+      if (target.url && (target.url.origin !== location.origin ||
+          appDirectoryUrl(target.url.href).pathname !== appDirectoryUrl().pathname)) {
+        const destination = appDirectoryUrl(target.url.href);
+        destination.searchParams.set('room', target.room);
+        location.assign(destination.href);
         return;
       }
       selectRoom(target.room, 'join');
@@ -923,12 +932,6 @@
     await refreshAll(); P.sendHello();
   }
   function setupBridge() {
-    el('bridge-base').value = ['http:', 'https:'].includes(location.protocol) ? location.origin : 'http://localhost:8787';
-    el('bridge-base').addEventListener('input', () => {
-      if (sessionMode !== 'create') return;
-      try { makeLink(); el('bridge-base').removeAttribute('aria-invalid'); }
-      catch (_) { el('bridge-base').setAttribute('aria-invalid', 'true'); el('qr-code').replaceChildren(); el('share-link').value = ''; }
-    });
     el('new-room').addEventListener('click', () => run(async () => {
       selectRoom(P.newRoom(), 'create');
       el('join-input').value = '';

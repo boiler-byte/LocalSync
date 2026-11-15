@@ -1,6 +1,6 @@
-/* LocalSync v7 – offline shell only. Never cache peer signaling or user data. */
+/* LocalSync v8 – offline shell only. Never cache peer signaling or user data. */
 'use strict';
-const CACHE_NAME = 'localsync-shell-v7';
+const CACHE_NAME = 'localsync-shell-v8';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './css/style.css',
   './js/qr.js', './js/storage.js', './js/files.js', './js/peer.js', './js/app.js',
