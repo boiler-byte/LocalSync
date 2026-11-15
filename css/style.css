@@ -104,3 +104,78 @@ button,input,textarea,select{font:inherit}
 .content-dialog-footer{display:flex;justify-content:space-between;align-items:center;gap:15px;border-top:1px solid #273a4b;padding:15px 26px}
 .content-dialog-footer span{color:#788fa6;font-size:11px}
 @media(max-width:720px){.content-dialog{width:calc(100vw - 18px);height:calc(100dvh - 25px);border-radius:12px}.content-dialog-header{padding:16px}.content-dialog-heading h2{font-size:17px}.content-source-row{padding:11px 15px 4px}.content-summary{padding:10px 16px 7px}.content-preview{margin:0 14px 14px}.content-code{padding:14px;font-size:11px}.content-dialog-footer{padding:12px 15px}.content-dialog-footer span{font-size:10px}}
+
+/* LocalSync v5: one workspace, brand in topbar, transient file dropzone. */
+.layout{display:block;min-height:100vh}
+.main-wrap{min-height:100vh;width:100%}
+.topbar{padding-inline:clamp(16px,3.5vw,54px)}
+.topbar-brand{padding:0;gap:11px;min-width:0}
+.topbar-brand .brand-mark{width:37px;height:37px;flex:0 0 37px}
+.topbar-brand strong{font-size:18px;line-height:1.2}
+.topbar-brand span{font-size:9px;letter-spacing:1.4px}
+.content{max-width:1640px;padding:32px clamp(16px,3.5vw,54px) 55px}
+.storage-card{margin-bottom:23px}
+.clipboard-card .clipboard-box{min-height:120px}
+.clipboard-card .actions{display:flex;flex-wrap:wrap}
+.wake-status{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;border:1px solid #704b40;border-radius:20px;padding:8px 10px;color:#ddaa88;background:#33251f;font-size:10px;font-weight:600}
+.wake-status.active{border-color:#28685a;color:#8aeee0;background:#17372f}
+.wake-icon{font-size:12px;line-height:1}
+#page-storage{position:relative}
+.storage-drop-overlay{position:fixed;inset:77px 0 0;background:rgba(5,15,24,.79);backdrop-filter:blur(5px);z-index:80;display:grid;place-items:center;pointer-events:none;padding:22px}
+.storage-drop-target{width:min(900px,100%);height:min(440px,75vh);border:3px dashed #68d8cb;border-radius:22px;background:#173640ec;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:12px;text-align:center;padding:30px;box-shadow:0 30px 80px #0008}
+.storage-drop-target .drop-glyph{width:70px;height:70px;border-radius:18px;display:grid;place-items:center;background:#205d5a;color:#b5fff3;font-size:48px}
+.storage-drop-target strong{font-size:clamp(20px,3vw,30px);letter-spacing:-.6px}
+.storage-drop-target>span:last-child{color:#b0c5d1;font-size:13px;line-height:1.6;max-width:460px}
+@media(max-width:720px){.topbar{height:auto;min-height:71px;flex-basis:auto;padding:13px 16px;flex-wrap:wrap;gap:11px}.topbar-right{gap:8px;flex-wrap:wrap;justify-content:flex-end}.topbar-brand{padding:0}.topbar-brand strong{font-size:16px}.topbar-brand span{font-size:8px}.content{padding:20px 13px 40px}.wake-status{font-size:9px;padding:5px 7px}.storage-drop-overlay{inset:72px 0 0}.storage-drop-target{height:min(360px,70vh)}.footer{padding:20px 14px;flex-wrap:wrap}}
+@media(max-width:430px){.wake-status{order:3}.topbar-left{flex:1}.topbar-right{gap:6px}.permissions-toggle{padding:8px 9px}.permission-count{display:none}.connection-pill{padding:8px 9px}.connection-chevron{display:none}}
+
+/* LocalSync v6: clipboard button and accessible standalone clipboard dialog. */
+.topbar-icon-button{display:inline-flex;align-items:center;justify-content:center;flex:0 0 38px;width:38px;height:38px;border:1px solid #33475b;border-radius:10px;background:#192739;color:#b8d9e9;transition:background .16s,border-color .16s,color .16s}
+.topbar-icon-button:hover,.topbar-icon-button:focus-visible{background:#22434a;border-color:#58a99f;color:#9df3e8}
+.topbar-icon-button svg{width:19px;height:19px}
+.clipboard-dialog{position:fixed;inset:0;margin:auto;padding:0;width:min(760px,calc(100vw - 30px));max-width:none;max-height:min(90dvh,780px);border:1px solid #405b74;border-radius:16px;background:#121f2e;color:var(--text);box-shadow:0 28px 100px #000d;overflow:auto}
+.clipboard-dialog::backdrop{background:rgba(0,6,16,.8);backdrop-filter:blur(3px)}
+.clipboard-dialog-header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:24px 26px 18px;border-bottom:1px solid #2a3b4f}
+.clipboard-dialog-header h2{font-size:20px;line-height:1.3;margin:7px 0 4px}
+.clipboard-dialog-header p{color:#8da6bc;font-size:12px;margin:0}
+.clipboard-dialog-body{padding:20px 26px 22px}
+.clipboard-dialog-body .input-label{margin:0 0 9px}
+.clipboard-dialog .clipboard-box{margin:0;width:100%;min-height:220px;max-height:40dvh;resize:vertical}
+.clipboard-dialog-buttons{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+.clipboard-dialog-note{margin:19px 0 0;color:#839db1;font-size:11px;line-height:1.75}
+.clipboard-dialog-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 26px;border-top:1px solid #273a4b}
+.clipboard-dialog-footer span{font-size:11px;color:#788fa6}
+@media(max-width:720px){.clipboard-dialog{width:calc(100vw - 18px);max-height:calc(100dvh - 20px)}.clipboard-dialog-header{padding:19px 17px 15px}.clipboard-dialog-body{padding:15px 17px}.clipboard-dialog .clipboard-box{min-height:180px;max-height:35dvh}.clipboard-dialog-buttons{gap:7px}.clipboard-dialog-buttons button{font-size:11px;padding:8px 10px}.clipboard-dialog-footer{padding:13px 17px}.clipboard-dialog-footer span{font-size:10px}}
+@media(max-width:430px){.topbar-icon-button{width:34px;height:34px;flex-basis:34px}.topbar-right{gap:6px}.clipboard-dialog-footer span{max-width:160px}}
+
+/* v7: explicit session creation and join flow. */
+.pair-dialog{width:min(900px,calc(100vw - 30px));max-height:min(94dvh,950px)}
+.pair-session-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:stretch;gap:15px;padding:14px 27px 20px}
+.session-panel{min-width:0;border:1px solid #34465d;border-radius:13px;background:linear-gradient(165deg,#1b2b3c,#132031);padding:21px;display:flex;flex-direction:column}
+.session-panel-heading{display:flex;align-items:flex-start;gap:11px;min-height:79px}
+.session-step{display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;border-radius:9px;background:#16443f;color:#78e2d5;font-weight:800;font-size:12px}
+.session-join .session-step{background:#273e5d;color:#a3ccff}
+.session-panel-heading h3{margin:0 0 5px;font-size:15px;color:#ecf4fc}
+.session-panel-heading p{margin:0;font-size:11px;line-height:1.55;color:#8ea4ba}
+.session-create-button,.session-join-button{width:100%;min-height:40px;font-size:12px}
+.session-empty{flex:1;min-height:248px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:13px;text-align:center;color:#889db3;line-height:1.8;font-size:11px;border:1px dashed #3a5067;border-radius:10px;margin-top:17px;padding:20px}
+.session-empty-icon{font-size:35px;color:#4b9c9a}
+.session-output{margin-top:14px}
+.session-output .input-label{margin-top:11px}
+.session-output .input-combo{min-width:0}
+.session-id-input{font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.3px}
+.session-copy-icon{width:41px;flex:0 0 41px;padding:8px;min-height:37px}
+.session-qr-group{padding:13px 0 0}
+.session-qr-group .qr-wrap{margin:0 auto;width:218px}
+.session-join form{margin-top:2px}
+.session-join form>.input-label{margin-top:0}
+.session-join form .input{min-height:42px}
+.session-join-button{margin-top:15px}
+.session-connection-details{margin:24px 0 0!important;padding:17px 0 0!important;border-top:1px solid #35465a}
+.session-connection-details>div{align-items:baseline}
+#active-room{font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all;font-size:10px;max-width:210px}
+.session-security-note{font-size:10px!important;line-height:1.7!important;color:#829bb1!important;margin:auto 0 0;padding-top:20px}
+.join-error{font-size:11px!important;color:#ffaaa9!important;margin:8px 0 0!important;line-height:1.5!important}
+#join-input[aria-invalid="true"],#bridge-base[aria-invalid="true"]{border-color:#e98797}
+.pair-dialog-actions .text-button:disabled{opacity:.42}
+@media(max-width:760px){.pair-dialog{width:calc(100vw - 18px);max-height:calc(100dvh - 16px)}.pair-session-grid{grid-template-columns:1fr;gap:12px;padding:10px 16px 18px}.session-panel{padding:17px}.session-panel-heading{min-height:auto;padding-bottom:14px}.session-empty{min-height:130px}.session-security-note{padding-top:22px}.dialog-note{padding-left:17px;padding-right:17px}.pair-dialog-actions{padding:0 17px 17px}}

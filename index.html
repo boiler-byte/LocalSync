@@ -1,77 +1,120 @@
-<!doctype html>
+<!DOCTYPE html>
+<!DOCTYPE html>
+
 <html lang="de">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0a0f18">
-  <meta name="description" content="LocalSync: Browser-Speicher, Dateien und Pull-Transfers zwischen Geräten">
-  <title>LocalSync – Device Workspace</title>
-  <link rel="stylesheet" href="css/style.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="#0a0f18" name="theme-color"/>
+<meta content="LocalSync: Browser-Speicher, Dateien und Pull-Transfers zwischen Geräten" name="description"/>
+<title>LocalSync – Storage</title>
+<link href="manifest.webmanifest" rel="manifest"/>
+<link href="assets/icon-192.png" rel="icon" sizes="192x192" type="image/png"/>
+<link href="assets/icon-180.png" rel="apple-touch-icon"/>
+<meta content="yes" name="apple-mobile-web-app-capable"/>
+<meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/>
+<meta content="LocalSync" name="apple-mobile-web-app-title"/>
+<link href="css/style.css" rel="stylesheet"/>
 </head>
 <body>
 <div class="layout">
-  <aside class="sidebar" aria-label="Navigation">
-    <div class="brand"><div class="brand-mark"><svg viewBox="0 0 28 28" fill="none" aria-hidden="true"><path d="M6 10.4 14 5l8 5.4v7.2L14 23l-8-5.4v-7.2Z" stroke="currentColor" stroke-width="1.8"/><path d="m6 10.5 8 5.2 8-5.2M14 15.7V23" stroke="currentColor" stroke-width="1.6"/></svg></div><div><strong>LocalSync</strong><span>DEVICE WORKSPACE</span></div></div>
-    <div class="side-label">WORKSPACE</div>
-    <nav class="nav" aria-label="Arbeitsbereiche">
-      <button type="button" class="nav-btn active" data-page="storage"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="8.5" ry="3.5"/><path d="M3.5 5.5v6c0 1.94 3.8 3.5 8.5 3.5s8.5-1.56 8.5-3.5v-6M3.5 11.5v7c0 1.94 3.8 3.5 8.5 3.5s8.5-1.56 8.5-3.5v-7"/></svg> Storage <span class="nav-chevron">›</span></button>
-      <button type="button" class="nav-btn" data-page="transfer"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h6l2 2h8v11H4zM4 6V4h7l2 2"/><path d="M12 11v6m-3-3 3 3 3-3"/></svg> Transfer <span class="nav-chevron">›</span></button>
-    </nav>
-    <div class="sidebar-bottom"><div class="sidebar-note"><div class="note-icon">✦</div><strong>Privacy by default</strong><p>Daten sind nur nach einer Freigabe abrufbar. Dateien sind nach dem Anhängen freigegeben.</p></div><div class="version">PROTOTYP <span>v4 · Classic JS</span></div></div>
-  </aside>
-  <div class="main-wrap">
-    <header class="topbar">
-      <div class="topbar-left"><span class="crumb">Workspace</span><span class="slash">/</span><strong id="breadcrumb">Storage</strong></div>
-      <div class="topbar-right">
-        <div class="permission-wrap"><button type="button" id="permission-toggle" class="outline-button permissions-toggle" aria-expanded="false" aria-controls="permissions-menu"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 1 1 8 0v3"/></svg><span>Freigaben</span><span class="permission-count" id="permission-count">0 / 3</span><span class="caret">⌄</span></button>
-          <div class="permissions-menu hidden" id="permissions-menu"><div class="menu-title">Download-Freigaben</div><p>Die Gegenstelle kann ausschließlich Daten abrufen, die du freigibst.</p><label class="switch-row"><span><strong>localStorage</strong><small>Alle Schlüssel dieses Origins</small></span><input type="checkbox" id="permit-local"></label><label class="switch-row"><span><strong>IndexedDB</strong><small>Datenbanken dieses Origins</small></span><input type="checkbox" id="permit-idb"></label><label class="switch-row"><span><strong>Zwischenablage</strong><small>Nur der eingelesene Text-Snapshot</small></span><input type="checkbox" id="permit-clipboard"></label><div class="always-on">✓ Hinzugefügte Dateien sind immer abrufbar.</div></div>
-        </div>
-        <button type="button" class="connection-pill" id="connection-toggle" aria-haspopup="dialog" aria-controls="pair-modal" aria-expanded="false" title="Verbindungsdialog öffnen"><span class="status-dot" id="status-dot"></span><span id="status-text">Nicht verbunden</span><span class="connection-chevron">⌄</span></button>
-      </div>
-    </header>
-    <main class="content">
-      <section class="page active" id="page-storage" aria-label="Storage">
-        <div class="stat-grid"><div class="stat"><span class="stat-ic cyan">▤</span><div><small>localStorage Keys</small><strong id="stat-local">—</strong></div></div><div class="stat"><span class="stat-ic purple">◈</span><div><small>IndexedDB Datenbanken</small><strong id="stat-idb">—</strong></div></div><div class="stat"><span class="stat-ic blue">◎</span><div><small>Aktueller Origin</small><strong class="origin-text" id="stat-origin">—</strong></div></div></div>
-        <div class="section-card storage-card">
-          <div class="section-head"><div><div class="section-title"><span class="mini-icon cyan">▤</span><h2>Speicherübersicht</h2><span class="tag" id="table-count">0 EINTRÄGE</span></div><p>Größe ist eine Schätzung. Ein Änderungszeitpunkt wird nur angezeigt, wenn er bekannt ist.</p></div><div class="actions"><button type="button" class="text-button" id="refresh-storage">↻ Aktualisieren</button><button type="button" class="outline-button" id="local-import-btn">localStorage JSON importieren</button><button type="button" class="outline-button" id="idb-import-btn">IndexedDB JSON importieren</button><button type="button" class="primary-button" id="add-storage-files">+ Dateien</button></div></div>
-          <div class="storage-filters" role="group" aria-label="Tabellenfilter"><div class="filter-tabs"><button type="button" class="filter-tab active" data-filter="all" aria-pressed="true">Alle <span id="count-all">0</span></button><button type="button" class="filter-tab" data-filter="localStorage" aria-pressed="false">localStorage <span id="count-local">0</span></button><button type="button" class="filter-tab" data-filter="indexedDB" aria-pressed="false">IndexedDB <span id="count-idb">0</span></button><button type="button" class="filter-tab" data-filter="file" aria-pressed="false">Dateitransfer <span id="count-files">0</span></button></div><label class="filter-search"><span class="sr-only">Schlüssel suchen</span><input id="table-search" type="search" placeholder="Schlüssel suchen …" autocomplete="off"></label></div>
-          <div class="table-wrap"><table class="data-table unified-table"><thead><tr>
-            <th scope="col" aria-sort="none"><button class="sort-button" type="button" data-sort="type" aria-label="Nach Typ sortieren">TYP <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
-            <th scope="col" aria-sort="none"><button class="sort-button" type="button" data-sort="key" aria-label="Nach Schlüssel sortieren">SCHLÜSSEL <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
-            <th scope="col" aria-sort="none"><button class="sort-button" type="button" data-sort="local" aria-label="Nach diesem Gerät sortieren"><span>DIESES GERÄT <span class="th-sub">Größe / Letzte Änderung</span></span><span class="sort-indicator" aria-hidden="true">↕</span></button></th>
-            <th scope="col" aria-sort="none"><button class="sort-button" type="button" data-sort="remote" aria-label="Nach Gegenstelle sortieren"><span>GEGENSTELLE <span class="th-sub">Größe / Letzte Änderung</span></span><span class="sort-indicator" aria-hidden="true">↕</span></button></th>
-            <th scope="col" aria-sort="none"><button class="sort-button" type="button" data-sort="activity" aria-label="Nach letzter Aktion sortieren">LETZTE AKTION <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
-            <th scope="col" aria-sort="none" class="right"><button class="sort-button sort-button-right" type="button" data-sort="action" aria-label="Nach verfügbaren Aktionen sortieren">AKTION <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
-          </tr></thead><tbody id="storage-body"><tr><td colspan="6" class="empty-cell">Lade Daten …</td></tr></tbody></table></div>
-          <div class="info-line">Alle Importe, Uploads und Löschungen wirken <strong>nur auf dieses Gerät</strong>. Dateien lassen sich von der Gegenstelle direkt herunterladen. Die letzte Aktion zeigt den Zeitpunkt und die Anzahl ihrer Ausführungen je Typ/Schlüssel/Aktion. localStorage und IndexedDB haben keinen nativen Änderungszeitpunkt.</div>
-        </div>
-      </section>
-      <section class="page" id="page-transfer" aria-labelledby="transfer-title">
-        <div class="heading"><div><div class="eyebrow">02 / CONTENT EXCHANGE</div><h1 id="transfer-title">Transfer</h1><p>Dateien und Zwischenablage lokal sammeln und bei Verbindung bereitstellen.</p></div><div class="auto-share"><span class="status-dot online"></span> Dateien automatisch freigegeben</div></div>
-        <div class="section-card"><div class="section-head"><div><div class="section-title"><span class="mini-icon blue">↥</span><h2>Dateien</h2><span class="tag" id="file-count">0 DATEIEN</span></div><p>Dateiauswahl, Drag & Drop oder Einfügen mit Strg/⌘ + V.</p></div><button type="button" id="add-files-top" class="primary-button">+ Dateien hinzufügen</button></div><div class="drop-zone" id="drop-zone" tabindex="0" role="button"><div class="drop-art"><svg viewBox="0 0 48 48" fill="none" aria-hidden="true"><rect x="8" y="12" width="32" height="28" rx="5"/><path d="M18 12V9c0-2 2-4 4-4h7l5 7M24 33V19m-6 6 6-6 6 6"/></svg></div><strong>Dateien hierher ziehen</strong><span>oder klicken, um Dateien auszuwählen</span><small>Alternativ Dateien/Bilder/Text aus der Zwischenablage einfügen</small></div><div class="file-list" id="file-list"><div class="blank-state">Noch keine Dateien hinzugefügt.</div></div></div>
-        <div class="section-card"><div class="section-head"><div><div class="section-title"><span class="mini-icon cyan">▧</span><h2>Zwischenablage</h2><span class="tag">TEXT</span></div><p>Der Inhalt wird nur durch eine aktive Aktion eingelesen.</p></div><div class="actions"><button type="button" class="outline-button" id="clipboard-read">Inhalt lesen</button><button type="button" class="outline-button" id="remote-clipboard-fetch" disabled>Von Gegenstelle abrufen</button><button type="button" class="outline-button" id="clipboard-write">Text kopieren</button><button type="button" class="danger-outline" id="clipboard-clear">Leeren</button></div></div><textarea class="clipboard-box" id="clipboard-box" placeholder="Zwischenablage einlesen oder Text hier einfügen …" spellcheck="false"></textarea><div class="info-line">Freigegeben wird nur der zuletzt eingelesene oder hier gesetzte Text – kein automatisches Überwachen deiner Zwischenablage. „Leeren“ schreibt nach Berechtigung einen leeren Text in die System-Zwischenablage.</div></div>
-      </section>
-    </main>
-    <footer class="footer"><span>LocalSync · Prototype v4</span><span>Nur Daten des aktuellen Origins <span class="footer-sep">•</span> Keine Cloud-Speicherung</span></footer>
-  </div>
+<div class="main-wrap">
+<header class="topbar">
+<div class="topbar-left"><div class="brand topbar-brand"><div class="brand-mark"><svg aria-hidden="true" fill="none" viewbox="0 0 28 28"><path d="M6 10.4 14 5l8 5.4v7.2L14 23l-8-5.4v-7.2Z" stroke="currentColor" stroke-width="1.8"></path><path d="m6 10.5 8 5.2 8-5.2M14 15.7V23" stroke="currentColor" stroke-width="1.6"></path></svg></div><div><strong>LocalSync</strong><span>LOCAL DATA BRIDGE</span></div></div></div>
+<div class="topbar-right"><button aria-controls="clipboard-dialog" aria-haspopup="dialog" aria-label="Zwischenablage öffnen" class="topbar-icon-button" id="clipboard-toggle" title="Zwischenablage" type="button"><svg aria-hidden="true" fill="none" height="20" viewbox="0 0 24 24" width="20"><rect height="17" rx="2.5" stroke="currentColor" stroke-width="1.7" width="14" x="5" y="4.5"></rect><path d="M9 4.5V3.5C9 2.7 9.7 2 10.5 2h3C14.3 2 15 2.7 15 3.5v1.8H9V4.5Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7"></path><path d="M9 11h6M9 15h6" stroke="currentColor" stroke-linecap="round" stroke-width="1.7"></path></svg></button><span aria-live="polite" class="wake-status hidden" id="wake-status" role="status" title="Bildschirm-Wachhaltung bei aktiver Geräteverbindung"><span aria-hidden="true" class="wake-icon">◉</span><span id="wake-status-text">Bildschirm aktiv</span></span>
+<div class="permission-wrap"><button aria-controls="permissions-menu" aria-expanded="false" class="outline-button permissions-toggle" id="permission-toggle" type="button"><svg aria-hidden="true" fill="none" viewbox="0 0 24 24"><rect height="11" rx="2" width="16" x="4" y="10"></rect><path d="M8 10V7a4 4 0 1 1 8 0v3"></path></svg><span>Freigaben</span><span class="permission-count" id="permission-count">0 / 3</span><span class="caret">⌄</span></button>
+<div class="permissions-menu hidden" id="permissions-menu"><div class="menu-title">Download-Freigaben</div><p>Die Gegenstelle kann ausschließlich Daten abrufen, die du freigibst.</p><label class="switch-row"><span><strong>localStorage</strong><small>Alle Schlüssel dieses Origins</small></span><input id="permit-local" type="checkbox"/></label><label class="switch-row"><span><strong>IndexedDB</strong><small>Datenbanken dieses Origins</small></span><input id="permit-idb" type="checkbox"/></label><label class="switch-row"><span><strong>Zwischenablage</strong><small>Nur der eingelesene Text-Snapshot</small></span><input id="permit-clipboard" type="checkbox"/></label><div class="always-on">✓ Hinzugefügte Dateien sind immer abrufbar.</div></div>
 </div>
-<div class="toast-container" id="toasts" aria-live="polite"></div>
-<div class="modal-overlay hidden" id="pair-modal" role="dialog" aria-modal="true" aria-labelledby="pair-title" aria-describedby="pair-description" tabindex="-1"><div class="modal pair-dialog"><div class="dialog-header"><div><div class="eyebrow">DEVICE CONNECTION</div><h2 id="pair-title">Verbindung herstellen</h2><p id="pair-description">Link teilen oder QR-Code auf dem zweiten Gerät scannen.</p></div><button type="button" class="dialog-close" id="pair-close" aria-label="Dialog schließen">✕</button></div><div class="pair-dialog-body"><div class="qr-wrap"><div id="qr-code" class="qr-code" aria-label="QR-Code der Einladungs-URL"></div><div class="qr-caption">SCAN TO CONNECT</div></div><div class="pair-form"><label class="input-label" for="bridge-base">Erreichbare Server-Adresse</label><input class="input" type="url" id="bridge-base" placeholder="http://192.168.1.10:8787"><div class="input-help">Die Gegenstelle muss diese Adresse erreichen. <code>localhost</code> funktioniert nur auf demselben Gerät.</div><label class="input-label" for="share-link">Einladungslink</label><div class="input-combo"><input class="input" type="text" id="share-link" readonly><button type="button" class="primary-button" id="copy-link">Kopieren</button></div><div class="connection-details"><div><span>Verbindungsstatus</span><strong id="bridge-status">Warte auf zweites Gerät</strong></div><div><span>Rolle</span><strong>Pull-only auf beiden Geräten</strong></div></div></div></div><p class="dialog-note" id="network-note">Der Server vermittelt den Verbindungsaufbau; Daten laufen über WebRTC.</p><div class="modal-actions pair-dialog-actions"><button type="button" class="text-button" id="new-room">↻ Neue Einladung</button><button type="button" class="outline-button" id="pair-done">Schließen</button></div></div></div>
-<dialog id="content-dialog" class="content-dialog" aria-labelledby="content-title" aria-describedby="content-description">
-  <div class="content-dialog-header">
-    <div class="content-dialog-heading"><div class="eyebrow">CONTENT VIEWER · READ ONLY</div><h2 id="content-title">Inhalt</h2><p id="content-description">Schlüsselinhalt anzeigen</p></div>
-    <button type="button" class="dialog-close" id="content-close" aria-label="Inhaltsdialog schließen">✕</button>
-  </div>
-  <div class="content-source-row" id="content-source-row" role="group" aria-label="Datenquelle">
-    <button type="button" class="content-source active" id="content-source-local" aria-pressed="true">Dieses Gerät</button>
-    <button type="button" class="content-source" id="content-source-remote" aria-pressed="false">Gegenstelle</button>
-  </div>
-  <div class="content-summary" id="content-summary" aria-live="polite"></div>
-  <div class="content-preview" id="content-preview" aria-live="polite"><p class="content-placeholder">Lade Inhalt …</p></div>
-  <div class="content-dialog-footer"><span>Schließen mit Esc oder Browser-Zurück</span><button type="button" class="outline-button" id="content-done">Schließen</button></div>
+<button aria-controls="pair-modal" aria-expanded="false" aria-haspopup="dialog" class="connection-pill" id="connection-toggle" title="Verbindungsdialog öffnen" type="button"><span class="status-dot" id="status-dot"></span><span id="status-text">Nicht verbunden</span><span class="connection-chevron">⌄</span></button>
+</div>
+</header>
+<main class="content">
+<section aria-label="Storage" class="page active" id="page-storage"><div aria-hidden="true" class="storage-drop-overlay hidden" id="storage-drop-overlay">
+<div class="storage-drop-target"><span aria-hidden="true" class="drop-glyph">⇩</span><strong>Dateien hier ablegen</strong><span>Die Dateien werden automatisch als Downloads für die Gegenstelle bereitgestellt.</span></div>
+</div>
+<div class="stat-grid"><div class="stat"><span class="stat-ic cyan">▤</span><div><small>localStorage Keys</small><strong id="stat-local">—</strong></div></div><div class="stat"><span class="stat-ic purple">◈</span><div><small>IndexedDB Datenbanken</small><strong id="stat-idb">—</strong></div></div><div class="stat"><span class="stat-ic blue">◎</span><div><small>Aktueller Origin</small><strong class="origin-text" id="stat-origin">—</strong></div></div></div>
+<div class="section-card storage-card">
+<div class="section-head"><div><div class="section-title"><span class="mini-icon cyan">▤</span><h2>Speicherübersicht</h2><span class="tag" id="table-count">0 EINTRÄGE</span></div><p>Größe ist eine Schätzung. Ein Änderungszeitpunkt wird nur angezeigt, wenn er bekannt ist.</p></div><div class="actions"><button class="text-button" id="refresh-storage" type="button">↻ Aktualisieren</button><button class="outline-button" id="local-import-btn" type="button">localStorage JSON importieren</button><button class="outline-button" id="idb-import-btn" type="button">IndexedDB JSON importieren</button><button class="primary-button" id="add-storage-files" type="button">+ Dateien</button></div></div>
+<div aria-label="Tabellenfilter" class="storage-filters" role="group"><div class="filter-tabs"><button aria-pressed="true" class="filter-tab active" data-filter="all" type="button">Alle <span id="count-all">0</span></button><button aria-pressed="false" class="filter-tab" data-filter="localStorage" type="button">localStorage <span id="count-local">0</span></button><button aria-pressed="false" class="filter-tab" data-filter="indexedDB" type="button">IndexedDB <span id="count-idb">0</span></button><button aria-pressed="false" class="filter-tab" data-filter="file" type="button">Dateitransfer <span id="count-files">0</span></button></div><label class="filter-search"><span class="sr-only">Schlüssel suchen</span><input autocomplete="off" id="table-search" placeholder="Schlüssel suchen …" type="search"/></label></div>
+<div class="table-wrap"><table class="data-table unified-table"><thead><tr>
+<th aria-sort="none" scope="col"><button aria-label="Nach Typ sortieren" class="sort-button" data-sort="type" type="button">TYP <span aria-hidden="true" class="sort-indicator">↕</span></button></th>
+<th aria-sort="none" scope="col"><button aria-label="Nach Schlüssel sortieren" class="sort-button" data-sort="key" type="button">SCHLÜSSEL <span aria-hidden="true" class="sort-indicator">↕</span></button></th>
+<th aria-sort="none" scope="col"><button aria-label="Nach diesem Gerät sortieren" class="sort-button" data-sort="local" type="button"><span>DIESES GERÄT <span class="th-sub">Größe / Letzte Änderung</span></span><span aria-hidden="true" class="sort-indicator">↕</span></button></th>
+<th aria-sort="none" scope="col"><button aria-label="Nach Gegenstelle sortieren" class="sort-button" data-sort="remote" type="button"><span>GEGENSTELLE <span class="th-sub">Größe / Letzte Änderung</span></span><span aria-hidden="true" class="sort-indicator">↕</span></button></th>
+<th aria-sort="none" scope="col"><button aria-label="Nach letzter Aktion sortieren" class="sort-button" data-sort="activity" type="button">LETZTE AKTION <span aria-hidden="true" class="sort-indicator">↕</span></button></th>
+<th aria-sort="none" class="right" scope="col"><button aria-label="Nach verfügbaren Aktionen sortieren" class="sort-button sort-button-right" data-sort="action" type="button">AKTION <span aria-hidden="true" class="sort-indicator">↕</span></button></th>
+</tr></thead><tbody id="storage-body"><tr><td class="empty-cell" colspan="6">Lade Daten …</td></tr></tbody></table></div>
+<div class="info-line">Alle Importe, Uploads und Löschungen wirken <strong>nur auf dieses Gerät</strong>. Dateien lassen sich von der Gegenstelle direkt herunterladen. Die letzte Aktion zeigt den Zeitpunkt und die Anzahl ihrer Ausführungen je Typ/Schlüssel/Aktion. localStorage und IndexedDB haben keinen nativen Änderungszeitpunkt.</div>
+</div>
+</section>
+</main>
+<footer class="footer"><span>LocalSync · Prototype v7</span><span>Nur Daten des aktuellen Origins <span class="footer-sep">•</span> Keine Cloud-Speicherung</span></footer>
+</div>
+</div>
+<dialog aria-describedby="clipboard-description" aria-labelledby="clipboard-title" class="clipboard-dialog" id="clipboard-dialog">
+<div class="clipboard-dialog-header"><div><div class="eyebrow">TRANSFER · CLIPBOARD</div><h2 id="clipboard-title">Zwischenablage</h2><p id="clipboard-description">Der Inhalt wird nur durch eine aktive Aktion eingelesen.</p></div><button aria-label="Zwischenablage schließen" class="dialog-close" id="clipboard-close" type="button">✕</button></div>
+<div class="clipboard-dialog-body"><label class="input-label" for="clipboard-box">Text / Zwischenablage-Snapshot</label><textarea class="clipboard-box" id="clipboard-box" placeholder="Zwischenablage einlesen oder Text hier einfügen …" spellcheck="false"></textarea><div class="clipboard-dialog-buttons"><button class="outline-button" id="clipboard-read" type="button">Inhalt lesen</button><button class="outline-button" disabled="" id="remote-clipboard-fetch" type="button">Von Gegenstelle abrufen</button><button class="outline-button" id="clipboard-write" type="button">Text kopieren</button><button class="danger-outline" id="clipboard-clear" type="button">Leeren</button></div><p class="clipboard-dialog-note">Freigegeben wird nur der zuletzt eingelesene oder hier gesetzte Text – kein automatisches Überwachen deiner Zwischenablage. „Leeren“ schreibt nach Berechtigung einen leeren Text in die System-Zwischenablage.</p></div>
+<div class="clipboard-dialog-footer"><span>Schließen mit Esc oder Browser-Zurück</span><button class="outline-button" id="clipboard-done" type="button">Schließen</button></div>
 </dialog>
-<div class="modal-overlay hidden" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title"><div class="modal"><h2 id="confirm-title">Aktion bestätigen</h2><p id="confirm-message"></p><div class="modal-actions"><button type="button" class="outline-button" id="confirm-cancel">Abbrechen</button><button type="button" class="outline-button hidden" id="confirm-merge">Merge</button><button type="button" class="danger-button" id="confirm-okay">Fortfahren</button></div></div></div>
-<input type="file" id="file-picker" multiple hidden><input type="file" id="local-import-picker" accept=".json,application/json" hidden><input type="file" id="idb-import-picker" accept=".json,application/json" hidden><input type="file" id="row-upload-picker" hidden>
+<div aria-live="polite" class="toast-container" id="toasts"></div>
+<div aria-describedby="pair-description" aria-labelledby="pair-title" aria-modal="true" class="modal-overlay hidden" id="pair-modal" role="dialog" tabindex="-1">
+<div class="modal pair-dialog">
+<div class="dialog-header">
+<div><div class="eyebrow">DEVICE CONNECTION</div><h2 id="pair-title">Verbindung herstellen</h2><p id="pair-description">Sitzung erstellen oder einer bestehenden Verbindung beitreten.</p></div>
+<button aria-label="Dialog schließen" class="dialog-close" id="pair-close" type="button">✕</button>
+</div>
+<div class="pair-dialog-body pair-session-grid">
+<section aria-labelledby="create-session-title" class="session-panel session-create">
+<div class="session-panel-heading"><span class="session-step">01</span><div><h3 id="create-session-title">Sitzung erstellen</h3><p>Einladung erstellen und auf dem anderen Gerät öffnen.</p></div></div>
+<button class="primary-button session-create-button" id="new-room" type="button">+ Neue Sitzung erstellen</button>
+<div class="session-empty" id="session-empty"><span aria-hidden="true" class="session-empty-icon">◎</span><span>Noch keine Sitzung erstellt.<br/>Nach dem Erstellen erscheinen ID, QR-Code und Link.</span></div>
+<div class="session-output hidden" id="session-output">
+<label class="input-label" for="session-id">Session-ID</label>
+<div class="input-combo"><input aria-label="Session-ID" class="input session-id-input" id="session-id" readonly="" type="text"/><button aria-label="Session-ID kopieren" class="outline-button session-copy-icon" id="copy-session-id" title="Session-ID kopieren" type="button"><svg aria-hidden="true" fill="none" height="16" viewbox="0 0 24 24" width="16"><rect height="12" rx="2" stroke="currentColor" stroke-width="1.7" width="11" x="8" y="8"></rect><path d="M16 8V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h1" stroke="currentColor" stroke-width="1.7"></path></svg></button></div>
+<div class="session-qr-group"><div class="qr-wrap"><div aria-label="QR-Code der Einladungs-URL" class="qr-code" id="qr-code"></div><div class="qr-caption">SCAN TO JOIN</div></div></div>
+<label class="input-label" for="bridge-base">Erreichbare Server-Adresse</label>
+<input class="input" id="bridge-base" placeholder="https://sync.example.com" spellcheck="false" type="url"/>
+<div class="input-help">Für andere Geräte die erreichbare HTTPS-Adresse oder LAN-IP verwenden, nicht „localhost“.</div>
+<label class="input-label" for="share-link">Einladungslink</label>
+<div class="input-combo"><input aria-label="Einladungslink" class="input" id="share-link" readonly="" type="text"/><button aria-label="Einladungslink kopieren" class="primary-button session-copy-icon" id="copy-link" title="Einladungslink kopieren" type="button"><svg aria-hidden="true" fill="none" height="16" viewbox="0 0 24 24" width="16"><rect height="12" rx="2" stroke="currentColor" stroke-width="1.7" width="11" x="8" y="8"></rect><path d="M16 8V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h1" stroke="currentColor" stroke-width="1.7"></path></svg></button></div>
+</div>
+</section>
+<section aria-labelledby="join-session-title" class="session-panel session-join">
+<div class="session-panel-heading"><span class="session-step">02</span><div><h3 id="join-session-title">Verbindung beitreten</h3><p>Session-ID oder Einladungslink eingeben.</p></div></div>
+<form id="join-form" novalidate="">
+<label class="input-label" for="join-input">Session-ID / Einladungslink</label>
+<input aria-describedby="join-help join-error" autocomplete="off" class="input" id="join-input" placeholder="Session-ID oder https://…/?room=…" spellcheck="false" type="text"/>
+<div class="input-help" id="join-help">Du kannst die ID einfügen oder den vollständigen Einladungslink verwenden.</div>
+<p aria-live="polite" class="join-error hidden" id="join-error" role="alert"></p>
+<button class="primary-button session-join-button" id="join-button" type="submit">Verbinden</button>
+</form>
+<div class="connection-details session-connection-details" role="status">
+<div><span>Aktuelle Sitzung</span><strong id="active-room">Keine Sitzung aktiv</strong></div>
+<div><span>Verbindungsstatus</span><strong id="bridge-status">Nicht verbunden</strong></div>
+<div><span>Rolle</span><strong id="session-role">—</strong></div>
+</div>
+<p class="session-security-note">Die Verbindung erlaubt nur das Herunterladen freigegebener Inhalte. Einträge der Gegenstelle werden niemals remote verändert.</p>
+</section>
+</div>
+<p class="dialog-note" id="network-note">Der Server vermittelt den Verbindungsaufbau; Daten werden über einen verschlüsselten WebRTC-Datenkanal übertragen.</p>
+<div class="modal-actions pair-dialog-actions"><button class="text-button" disabled="" id="disconnect-room" type="button">Verbindung trennen</button><button class="outline-button" id="pair-done" type="button">Schließen</button></div>
+</div>
+</div>
+<dialog aria-describedby="content-description" aria-labelledby="content-title" class="content-dialog" id="content-dialog">
+<div class="content-dialog-header">
+<div class="content-dialog-heading"><div class="eyebrow">CONTENT VIEWER · READ ONLY</div><h2 id="content-title">Inhalt</h2><p id="content-description">Schlüsselinhalt anzeigen</p></div>
+<button aria-label="Inhaltsdialog schließen" class="dialog-close" id="content-close" type="button">✕</button>
+</div>
+<div aria-label="Datenquelle" class="content-source-row" id="content-source-row" role="group">
+<button aria-pressed="true" class="content-source active" id="content-source-local" type="button">Dieses Gerät</button>
+<button aria-pressed="false" class="content-source" id="content-source-remote" type="button">Gegenstelle</button>
+</div>
+<div aria-live="polite" class="content-summary" id="content-summary"></div>
+<div aria-live="polite" class="content-preview" id="content-preview"><p class="content-placeholder">Lade Inhalt …</p></div>
+<div class="content-dialog-footer"><span>Schließen mit Esc oder Browser-Zurück</span><button class="outline-button" id="content-done" type="button">Schließen</button></div>
+</dialog>
+<div aria-labelledby="confirm-title" aria-modal="true" class="modal-overlay hidden" id="confirm-modal" role="dialog"><div class="modal"><h2 id="confirm-title">Aktion bestätigen</h2><p id="confirm-message"></p><div class="modal-actions"><button class="outline-button" id="confirm-cancel" type="button">Abbrechen</button><button class="outline-button hidden" id="confirm-merge" type="button">Merge</button><button class="danger-button" id="confirm-okay" type="button">Fortfahren</button></div></div></div>
+<input hidden="" id="file-picker" multiple="" type="file"/><input accept=".json,application/json" hidden="" id="local-import-picker" type="file"/><input accept=".json,application/json" hidden="" id="idb-import-picker" type="file"/><input hidden="" id="row-upload-picker" type="file"/>
 <script src="js/qr.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/files.js"></script>

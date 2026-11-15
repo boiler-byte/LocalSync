@@ -1,4 +1,4 @@
-/* LocalSync v4 UI. Classic script without ES modules. */
+/* LocalSync v6 UI. Classic script without ES modules. */
 (function () {
   'use strict';
   const S = window.LocalBridgeStorage, F = window.LocalBridgeFiles, P = window.LocalBridgePeer;
@@ -140,12 +140,6 @@
     });
   }
   const importMode = kind => confirmDialog(kind + ' lokal importieren', 'Merge fügt Einträge hinzu oder überschreibt bestehende Records. Ersetzen löscht den vorhandenen Inhalt der betroffenen Datenbank bzw. des gesamten localStorage. Die Gegenstelle bleibt unverändert.', true);
-  function page(name) {
-    for (const item of document.querySelectorAll('.page')) item.classList.toggle('active', item.id === 'page-' + name);
-    for (const item of document.querySelectorAll('.nav-btn')) item.classList.toggle('active', item.dataset.page === name);
-    el('breadcrumb').textContent = name === 'storage' ? 'Storage' : 'Transfer';
-    if (name === 'storage') run(refreshAll);
-  }
   function bytes(value) { return encoder.encode(String(value)).byteLength; }
   function showTime(ms) {
     if (!Number.isFinite(ms) || ms <= 0) return 'Zeitpunkt unbekannt';
@@ -559,41 +553,52 @@
     }));
     run(refreshAll);
   }
-  function renderFiles() {
-    const items = F.list(), root = el('file-list'); root.replaceChildren();
-    el('file-count').textContent = items.length + (items.length === 1 ? ' DATEI' : ' DATEIEN');
-    if (!items.length) { const d = document.createElement('div'); d.className = 'blank-state'; d.textContent = 'Noch keine Dateien hinzugefügt.'; root.append(d); }
-    for (const item of items) {
-      const row = document.createElement('div'); row.className = 'file-row';
-      const icon = document.createElement('div'); icon.className = 'file-badge'; icon.textContent = '▤';
-      const text = document.createElement('div'); text.className = 'file-info';
-      const name = document.createElement('strong'); name.textContent = item.name;
-      const meta = document.createElement('small'); meta.textContent = F.humanSize(item.size) + ' · Sofort freigegeben';
-      text.append(name, meta); const actions = document.createElement('div'); actions.className = 'file-actions';
-      actions.append(button('↓', 'small-action', () => { const file = F.get(item.id); if (file) { F.download(file, item.name, item.type); recordAction('file', item.name, 'download'); } }));
-      actions.append(button('Entfernen', 'small-action red', () => F.remove(item.id)));
-      row.append(icon, text, actions); root.append(row);
-    }
-    renderStorage(); P.sendHello();
-  }
   function setupFiles() {
-    const picker = el('file-picker'), zone = el('drop-zone');
-    const openPicker = () => picker.click();
-    el('add-files-top').addEventListener('click', openPicker);
-    zone.addEventListener('click', openPicker);
-    zone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPicker(); } });
-    picker.addEventListener('change', () => { const count = F.add(picker.files); picker.value = ''; if (count) toast(count + ' Datei(en) hinzugefügt und freigegeben.'); });
-    for (const type of ['dragenter', 'dragover']) zone.addEventListener(type, e => { e.preventDefault(); zone.classList.add('dragover'); });
-    for (const type of ['dragleave', 'drop']) zone.addEventListener(type, e => { e.preventDefault(); zone.classList.remove('dragover'); });
-    zone.addEventListener('drop', e => { const count = F.add(e.dataTransfer.files); if (count) toast(count + ' Datei(en) hinzugefügt und freigegeben.'); });
+    const picker = el('file-picker'), overlay = el('storage-drop-overlay');
+    function attachFiles(files, verb = 'hinzugefügt und freigegeben') {
+      const count = F.add(files);
+      if (count) toast(count + ' Datei(en) ' + verb + '.');
+    }
+    picker.addEventListener('change', () => {
+      if (picker.files.length) attachFiles(picker.files);
+      picker.value = '';
+    });
+    // An overlay appears only for OS file drags, not dragged text or table selections.
+    let dragDepth = 0;
+    const hasFileDrag = event => Array.from(event.dataTransfer?.types || []).includes('Files');
+    function hideDrop() { dragDepth = 0; overlay.classList.add('hidden'); overlay.setAttribute('aria-hidden', 'true'); }
+    document.addEventListener('dragenter', event => {
+      if (!hasFileDrag(event)) return;
+      event.preventDefault(); dragDepth++;
+      overlay.classList.remove('hidden'); overlay.setAttribute('aria-hidden', 'false');
+    });
+    document.addEventListener('dragover', event => {
+      if (!hasFileDrag(event)) return;
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+      overlay.classList.remove('hidden'); overlay.setAttribute('aria-hidden', 'false');
+    });
+    document.addEventListener('dragleave', event => {
+      if (!hasFileDrag(event)) return;
+      if (--dragDepth <= 0 || (event.target === document.documentElement && !event.relatedTarget)) hideDrop();
+    });
+    document.addEventListener('drop', event => {
+      if (!hasFileDrag(event)) return;
+      event.preventDefault();
+      hideDrop();
+      if (event.dataTransfer?.files?.length) attachFiles(event.dataTransfer.files);
+    });
+    document.addEventListener('dragend', hideDrop);
+    window.addEventListener('blur', hideDrop);
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') hideDrop(); });
     document.addEventListener('paste', e => {
       const focus = document.activeElement;
       if (focus?.matches('input,textarea,[contenteditable="true"]')) return;
       const items = Array.from(e.clipboardData?.items || []);
       const files = items.filter(item => item.kind === 'file').map(item => item.getAsFile()).filter(Boolean);
-      if (files.length) { e.preventDefault(); F.add(files); toast(files.length + ' Datei(en) angehängt.'); return; }
+      if (files.length) { e.preventDefault(); attachFiles(files, 'angehängt'); return; }
       const text = e.clipboardData?.getData('text/plain');
-      if (text) { e.preventDefault(); F.add([new File([text], 'zwischenablage.txt', { type: 'text/plain' })]); toast('Zwischenablage als Datei angehängt.'); }
+      if (text) { e.preventDefault(); attachFiles([new File([text], 'zwischenablage.txt', { type: 'text/plain' })], 'angehängt'); }
     });
     state.knownFiles = new Map(F.list().map(item => [item.id, item.name]));
     window.addEventListener('lb:files-changed', () => {
@@ -603,9 +608,8 @@
       for (const [id, name] of state.knownFiles) if (!currentFiles.has(id)) changes.push({ type: 'file', key: name, action: 'remove' });
       state.knownFiles = currentFiles;
       recordActions(changes);
-      renderFiles();
+      renderStorage(); P.sendHello();
     });
-    renderFiles();
     const box = el('clipboard-box');
     box.addEventListener('input', () => F.setClipboard(box.value));
     el('clipboard-read').addEventListener('click', () => run(async () => {
@@ -626,6 +630,50 @@
       const id = P.request('clipboard'); state.pending.set(id, { type: 'clipboard' });
       toast('Zwischenablage der Gegenstelle wird abgerufen …');
     }));
+  }
+  // Native clipboard modal: Escape, backdrop click and browser Back close the dialog.
+  // Its transient history entry uses the same URL; payload stays only in memory.
+  const CLIPBOARD_HISTORY_KEY = '__localsyncClipboardDialog';
+  let clipboardOpenToken = null;
+  let clipboardFocusOrigin = null;
+  let clipboardTokenSequence = 0;
+  function closeClipboardDialog(fromHistory = false) {
+    const dialog = el('clipboard-dialog');
+    if (!dialog.open) return;
+    const token = clipboardOpenToken;
+    clipboardOpenToken = null;
+    dialog.close();
+    const focusTarget = clipboardFocusOrigin?.isConnected ? clipboardFocusOrigin : el('clipboard-toggle');
+    clipboardFocusOrigin = null;
+    focusTarget.focus();
+    if (!fromHistory && history.state?.[CLIPBOARD_HISTORY_KEY] === token) history.back();
+  }
+  function openClipboardDialog() {
+    const dialog = el('clipboard-dialog');
+    if (dialog.open) return;
+    clipboardFocusOrigin = document.activeElement;
+    clipboardOpenToken = Date.now() + '-' + (++clipboardTokenSequence);
+    try {
+      const old = history.state && typeof history.state === 'object' ? history.state : {};
+      history.pushState({ ...old, [CLIPBOARD_HISTORY_KEY]: clipboardOpenToken }, '', location.href);
+    } catch (_) { /* Escape and close button remain usable without History API. */ }
+    dialog.showModal();
+    el('clipboard-close').focus();
+  }
+  function setupClipboardDialog() {
+    const dialog = el('clipboard-dialog');
+    el('clipboard-toggle').addEventListener('click', openClipboardDialog);
+    el('clipboard-close').addEventListener('click', () => closeClipboardDialog());
+    el('clipboard-done').addEventListener('click', () => closeClipboardDialog());
+    dialog.addEventListener('cancel', event => { event.preventDefault(); closeClipboardDialog(); });
+    dialog.addEventListener('click', event => {
+      if (event.target !== dialog) return;
+      const bounds = dialog.getBoundingClientRect();
+      if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closeClipboardDialog();
+    });
+    window.addEventListener('popstate', () => {
+      if (dialog.open && history.state?.[CLIPBOARD_HISTORY_KEY] !== clipboardOpenToken) closeClipboardDialog(true);
+    });
   }
   function refreshPermissions() {
     const permissions = { localStorage: el('permit-local').checked, indexedDB: el('permit-idb').checked, clipboard: el('permit-clipboard').checked };
@@ -659,7 +707,7 @@
     el('pair-modal').addEventListener('click', e => { if (e.target === el('pair-modal')) closePair(); });
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
-        if (el('content-dialog').open) return; // Native dialog fires `cancel`; history is handled there.
+        if (el('content-dialog').open || el('clipboard-dialog').open) return; // Native dialogs handle Escape and history.
         if (!el('confirm-modal').classList.contains('hidden')) { el('confirm-cancel').click(); return; }
         if (!el('pair-modal').classList.contains('hidden')) { closePair(); return; }
         el('permissions-menu').classList.add('hidden'); el('permission-toggle').setAttribute('aria-expanded', 'false');
@@ -672,24 +720,155 @@
       }
     });
   }
+  // A session is only created after explicit action. Invitation URLs are auto-joined on load.
+  let sessionMode = null; // 'create' | 'join' | null
+  const ROOM_PATTERN = /^[a-zA-Z0-9_-]{12,80}$/;
   function getBaseUrl() {
     const url = new URL(el('bridge-base').value.trim() || location.origin);
-    if (!['http:', 'https:'].includes(url.protocol)) throw Error('Server-Adresse muss http:// oder https:// enthalten.');
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
+      throw Error('Bitte eine gültige http(s)-Serveradresse ohne Zugangsdaten angeben.');
+    }
     return url.origin;
   }
+  function updateSessionUI() {
+    const active = !!sessionMode;
+    const created = sessionMode === 'create';
+    el('session-output').classList.toggle('hidden', !created);
+    el('session-empty').classList.toggle('hidden', created);
+    el('disconnect-room').disabled = !active;
+    el('active-room').textContent = active ? P.getRoom() : 'Keine Sitzung aktiv';
+    el('session-role').textContent = created ? 'Sitzung erstellt' : sessionMode === 'join' ? 'Beigetreten' : '—';
+    if (created) el('session-id').value = P.getRoom();
+    else { el('session-id').value = ''; el('share-link').value = ''; el('qr-code').replaceChildren(); }
+    el('bridge-status').textContent = !active ? 'Nicht verbunden' : P.isOpen() ? 'Verbunden' : 'Warte auf Gegenstelle';
+  }
+  function setRoomUrl(room) {
+    if (!['http:', 'https:'].includes(location.protocol)) return;
+    const url = new URL(location.href);
+    if (room) url.searchParams.set('room', room);
+    else url.searchParams.delete('room');
+    history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+  }
+  function selectRoom(room, mode) {
+    if (!ROOM_PATTERN.test(room)) throw Error('Ungültige Session-ID. Erwartet werden 12–80 Zeichen (Buchstaben, Zahlen, - oder _).');
+    sessionMode = mode;
+    setRoomUrl(room);
+    P.start(room);
+    updateSessionUI();
+    if (mode === 'create') makeLink();
+  }
   function makeLink() {
+    if (sessionMode !== 'create') return;
     const link = getBaseUrl() + '/?room=' + encodeURIComponent(P.getRoom());
     el('share-link').value = link;
     const qr = el('qr-code'); qr.replaceChildren();
     if (window.LocalBridgeQR) window.LocalBridgeQR.render(qr, link, 194);
     el('network-note').textContent = /^(localhost|127\.0\.0\.1)$/.test(new URL(link).hostname)
-      ? 'Auf einem zweiten Gerät muss die erreichbare LAN-IP bzw. Domain des Servers eingetragen sein.'
-      : 'Die WebRTC-Übertragung ist verschlüsselt. Clipboard-APIs benötigen auf anderen Geräten in der Regel HTTPS.';
+      ? 'Für ein zweites Gerät die Server-Adresse oben auf eine erreichbare IP bzw. HTTPS-Domain ändern.'
+      : 'WebRTC-Datentransfer ist verschlüsselt. Zwischenablage und PWA benötigen auf weiteren Geräten normalerweise HTTPS.';
+  }
+  async function copyValue(value, target, message) {
+    if (!value) throw Error('Zuerst eine Sitzung erstellen.');
+    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(value);
+    else { target.select(); if (!document.execCommand('copy')) throw Error('Bitte den Wert manuell kopieren.'); }
+    toast(message);
+  }
+  function parseJoinInput(value) {
+    const text = value.trim();
+    if (ROOM_PATTERN.test(text)) return { room: text, origin: location.origin };
+    let url;
+    try { url = new URL(text); } catch (_) { throw Error('Bitte eine gültige Session-ID oder einen Einladungslink eingeben.'); }
+    const room = url.searchParams.get('room');
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || !['/', '/index.html'].includes(url.pathname) || !room || !ROOM_PATTERN.test(room)) {
+      throw Error('Ungültiger Einladungslink. Er muss eine gültige Session-ID als ?room= enthalten.');
+    }
+    return { room, origin: url.origin };
+  }
+  function joinSession(event) {
+    event.preventDefault();
+    const errorBox = el('join-error');
+    errorBox.textContent = ''; errorBox.classList.add('hidden'); el('join-input').removeAttribute('aria-invalid');
+    try {
+      const target = parseJoinInput(el('join-input').value);
+      if (target.origin !== location.origin) {
+        // The signaling endpoint is same-origin. A foreign invitation must be opened on its server.
+        location.assign(target.origin + '/?room=' + encodeURIComponent(target.room));
+        return;
+      }
+      selectRoom(target.room, 'join');
+      toast('Sitzung beigetreten. Warte auf die Gegenstelle.');
+    } catch (error) {
+      errorBox.textContent = error.message; errorBox.classList.remove('hidden');
+      el('join-input').setAttribute('aria-invalid', 'true');
+      el('join-input').focus();
+    }
+  }
+  // Screen Wake Lock works only on supported secure contexts and while the page is visible.
+  // It cannot prevent every operating-system suspension or browser background restriction.
+  let wakeSentinel = null, wakeRequestPending = false, wakeEpoch = 0, wakeConnected = false;
+  function wakeIndicator(text, active = false) {
+    const badge = el('wake-status');
+    badge.classList.toggle('hidden', !wakeConnected);
+    badge.classList.toggle('active', active);
+    badge.classList.toggle('unavailable', !active);
+    el('wake-status-text').textContent = text;
+    badge.title = active ? 'Wake Lock ist aktiv – Bildschirm bleibt nach Möglichkeit eingeschaltet.'
+      : 'Wake Lock ist nicht aktiv; die Verbindung kann bei gesperrtem Bildschirm abbrechen.';
+  }
+  async function requestWakeLock() {
+    if (!wakeConnected || document.visibilityState !== 'visible' || wakeSentinel || wakeRequestPending) return;
+    if (typeof navigator.wakeLock?.request !== 'function') {
+      wakeIndicator('Wachhaltung nicht verfügbar'); return;
+    }
+    wakeRequestPending = true;
+    const epoch = wakeEpoch;
+    try {
+      const lock = await navigator.wakeLock.request('screen');
+      if (epoch !== wakeEpoch || !wakeConnected || document.visibilityState !== 'visible') {
+        await lock.release(); return;
+      }
+      wakeSentinel = lock;
+      lock.addEventListener('release', () => {
+        if (wakeSentinel === lock) {
+          wakeSentinel = null;
+          if (wakeConnected) wakeIndicator('Bildschirmsperre möglich');
+        }
+      });
+      wakeIndicator('Bildschirm aktiv', true);
+    } catch (_) {
+      if (epoch === wakeEpoch && wakeConnected) wakeIndicator('Wachhaltung nicht verfügbar');
+    } finally {
+      wakeRequestPending = false;
+      if (wakeConnected && epoch !== wakeEpoch) void requestWakeLock();
+    }
+  }
+  function setConnectionWakeLock(online) {
+    if (wakeConnected === online) return;
+    wakeConnected = online;
+    wakeEpoch++;
+    if (!online) {
+      const old = wakeSentinel;
+      wakeSentinel = null;
+      if (old) void old.release().catch(() => {});
+      wakeIndicator('');
+    } else {
+      wakeIndicator('Aktivierung …');
+      void requestWakeLock();
+    }
+  }
+  function setupWakeLock() {
+    document.addEventListener('visibilitychange', () => {
+      if (!wakeConnected) return;
+      if (document.visibilityState === 'visible') void requestWakeLock();
+      else if (!wakeSentinel) wakeIndicator('Bildschirmsperre möglich');
+    });
+    window.addEventListener('pagehide', () => setConnectionWakeLock(false));
   }
   function updateConnection(status) {
     const online = status === 'connected';
+    setConnectionWakeLock(online);
     el('status-text').textContent = online ? 'Gerät verbunden' : status === 'server-error' ? 'Server nicht erreichbar' : 'Nicht verbunden';
-    el('bridge-status').textContent = online ? 'Verbunden' : status === 'server-error' ? 'Signaling nicht erreichbar' : 'Warte auf Gegenstelle';
+    el('bridge-status').textContent = !sessionMode ? 'Nicht verbunden' : online ? 'Verbunden' : status === 'server-error' ? 'Signaling nicht erreichbar' : 'Warte auf Gegenstelle';
     el('status-dot').className = 'status-dot ' + (online ? 'online' : status === 'waiting' ? 'waiting' : '');
     if (!online) { state.remoteInfo = { permissions: {}, files: [], localStorage: [], indexedDB: [] }; state.pending.clear(); }
     updateRemote();
@@ -744,24 +923,39 @@
     await refreshAll(); P.sendHello();
   }
   function setupBridge() {
-    const current = new URL(location.href).searchParams.get('room');
-    const room = current && /^[a-zA-Z0-9_-]{12,80}$/.test(current) ? current : P.newRoom();
-    const url = new URL(location.href); url.searchParams.set('room', room);
-    if (['http:', 'https:'].includes(location.protocol)) history.replaceState(null, '', url.pathname + url.search);
     el('bridge-base').value = ['http:', 'https:'].includes(location.protocol) ? location.origin : 'http://localhost:8787';
-    P.start(room); makeLink();
-    el('bridge-base').addEventListener('input', () => { try { makeLink(); } catch (_) { el('qr-code').replaceChildren(); el('share-link').value = 'Ungültige Server-Adresse'; } });
-    el('new-room').addEventListener('click', () => {
-      const room = P.newRoom(), url = new URL(location.href); url.searchParams.set('room', room);
-      if (['http:', 'https:'].includes(location.protocol)) history.replaceState(null, '', url.pathname + url.search);
-      P.start(room); makeLink(); toast('Neue Einladung erstellt.');
+    el('bridge-base').addEventListener('input', () => {
+      if (sessionMode !== 'create') return;
+      try { makeLink(); el('bridge-base').removeAttribute('aria-invalid'); }
+      catch (_) { el('bridge-base').setAttribute('aria-invalid', 'true'); el('qr-code').replaceChildren(); el('share-link').value = ''; }
     });
-    el('copy-link').addEventListener('click', () => run(async () => {
-      const input = el('share-link');
-      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(input.value);
-      else { input.select(); if (!document.execCommand('copy')) throw Error('Bitte den Link manuell kopieren.'); }
-      toast('Einladungslink kopiert.');
+    el('new-room').addEventListener('click', () => run(async () => {
+      selectRoom(P.newRoom(), 'create');
+      el('join-input').value = '';
+      el('join-error').classList.add('hidden');
+      toast('Neue Sitzung erstellt. Teile ID, QR-Code oder Einladungslink.');
     }));
+    el('join-form').addEventListener('submit', joinSession);
+    el('join-input').addEventListener('input', () => {
+      el('join-error').classList.add('hidden'); el('join-input').removeAttribute('aria-invalid');
+    });
+    el('copy-session-id').addEventListener('click', () => run(() => copyValue(el('session-id').value, el('session-id'), 'Session-ID kopiert.')));
+    el('copy-link').addEventListener('click', () => run(() => copyValue(el('share-link').value, el('share-link'), 'Einladungslink kopiert.')));
+    el('disconnect-room').addEventListener('click', () => {
+      P.stop(); sessionMode = null; setRoomUrl(null); updateSessionUI(); updateConnection('idle');
+      el('join-input').value = ''; toast('Sitzung beendet.');
+    });
+    const invited = new URL(location.href).searchParams.get('room');
+    if (invited) {
+      if (ROOM_PATTERN.test(invited)) {
+        el('join-input').value = invited;
+        selectRoom(invited, 'join');
+      } else {
+        setRoomUrl(null);
+        toast('Der Einladungslink enthält eine ungültige Session-ID.', true);
+      }
+    }
+    updateSessionUI();
     window.addEventListener('lb:connection', e => updateConnection(e.detail.status));
     window.addEventListener('lb:peer-info', e => { state.remoteInfo = e.detail; updateRemote(); });
     window.addEventListener('lb:peer-error', e => fail(e.detail));
@@ -771,11 +965,18 @@
       if (pending?.mode === 'content-preview' && contentIsCurrent(pending.view)) contentMessage(e.detail.reason, true);
     });
     window.addEventListener('lb:received', e => run(() => onReceived(e.detail)));
-    updateConnection('waiting');
+    updateConnection(sessionMode ? 'waiting' : 'idle');
+  }
+  function setupPWA() {
+    if (!('serviceWorker' in navigator) || !window.isSecureContext || !['http:', 'https:'].includes(location.protocol)) return;
+    const register = () => navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(error => {
+      console.warn('LocalSync: Service Worker konnte nicht registriert werden:', error);
+    });
+    if (document.readyState === 'complete') void register();
+    else window.addEventListener('load', register, { once: true });
   }
   function init() {
-    document.querySelectorAll('[data-page]').forEach(b => b.addEventListener('click', () => page(b.dataset.page)));
-    setupPairDialog(); setupContentDialog(); setupPermissions(); setupStorage(); setupFiles(); setupBridge();
+    setupWakeLock(); setupPairDialog(); setupContentDialog(); setupClipboardDialog(); setupPermissions(); setupStorage(); setupFiles(); setupBridge(); setupPWA();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 }());

@@ -1,4 +1,4 @@
-# LocalSync · HTML-Prototyp v4
+# LocalSync · HTML-Prototyp v7
 
 Dark-Mode-App für Browser-Storage, Dateianhänge, Text-Zwischenablage und Pull-Transfers zwischen zwei Geräten. Vanilla HTML, CSS und **klassische JavaScript-Dateien mit `<script>`**; keine ES-Module, kein Bundler, kein `npm install`.
 
@@ -70,3 +70,42 @@ TLS_CERT=/pfad/zum/zertifikat.pem TLS_KEY=/pfad/zum/key.pem PORT=8787 node serve
 ### Installation als Delta v4
 
 Dieses v4-ZIP wird **über eine vollständige v3-Installation** entpackt und enthält nur die geänderten Dateien: `index.html`, `css/style.css`, `js/app.js`, `js/peer.js` und `README.md`. Die `device-bridge-prototyp/`-Verzeichnisstruktur bleibt mit den vorherigen Deltas kompatibel. Es werden weiterhin **klassische Scripts ohne ES-Module** verwendet.
+
+## Neu in v5 · Ein Workspace, Dropzone, Bildschirm-Wachhaltung
+
+- Die **Sidebar** mit Workspace-Navigation sowie die separate Seite **Transfer** entfallen. Das **LocalSync-Brand** sitzt links in der Topbar statt des Breadcrumbs. Die gemeinsame Storage-Tabelle bleibt Hauptansicht. Die **Zwischenablage** befindet sich jetzt als kompakte Karte unter der Tabelle; Datei-Uploads laufen weiterhin über **+ Dateien**, Copy/Paste und Drag & Drop.
+- Bei einem OS-Dateidrag erscheint eine **große Dropzone über der Storage-Ansicht**. Nach Drop, Abbruch oder Verlassen der Seite verschwindet sie. Die abgelegten Dateien erscheinen direkt als **Dateitransfer** in der Tabelle und sind automatisch für die Gegenstelle abrufbar. Ein normaler Textdrag öffnet die Dropzone nicht.
+- Solange der WebRTC-Datenkanal verbunden ist, wird nach Möglichkeit die **Screen Wake Lock API** (`navigator.wakeLock.request('screen')`) genutzt, um den Bildschirm aktiv zu halten. Der Status wird rechts in der Topbar angezeigt. Beim Trennen wird der Lock freigegeben; wenn die Seite nach einem Wechsel in den Hintergrund wieder sichtbar wird, wird er erneut angefordert. **Wichtig:** Nur in unterstützten Browsern und sicheren Kontexten (HTTPS oder localhost) verfügbar. Mobilgeräte dürfen einen Lock durch Akku-/Energiesparregeln oder beim Wechsel in den Hintergrund entziehen. Keine Garantie für eine dauerhaft aktive WebRTC-Verbindung bei gesperrtem Gerät.
+- Weiterhin klassische `<script>`-Dateien, keine ES-Module. `server.js`, `js/qr.js`, `js/files.js`, `js/peer.js` und `js/storage.js` bleiben gegenüber v4 unverändert.
+
+### Installation als Delta v5
+
+Dieses ZIP über **v4** entpacken. Geändert sind ausschließlich `index.html`, `css/style.css`, `js/app.js` und `README.md`. Der Ordnername `device-bridge-prototyp/` bleibt kompatibel.
+
+
+## Neu in v6 · Zwischenablage-Dialog und PWA
+
+- Die bisherige Zwischenablage-Karte unterhalb der Storage-Tabelle ist entfernt. In der Topbar öffnet das **Clipboard-Symbol** einen nativen Dialog mit denselben Funktionen: **Inhalt lesen**, **Von Gegenstelle abrufen**, **Text kopieren** und **Leeren**. Der Dialog schließt per **Escape**, Browser-Zurück, X, Klick auf den Hintergrund oder „Schließen“. Der History-Eintrag verwendet dieselbe URL. Der erfasste Zwischenablage-Snapshot und die bereits bestehenden Freigaben bleiben bei Öffnen/Schließen unverändert.
+- LocalSync ist eine **installierbare Progressive Web App (PWA)**. Neu sind `manifest.webmanifest`, App-Icons (`assets/`) und `sw.js`. Die PWA nutzt `display: standalone` und ein Startsymbol. Der Service Worker speichert nur die **statischen App-Dateien** für die Offline-Oberfläche; **keine Nutzdaten, Clipboards, Storage-Snapshots, Transfers, Signaling-Nachrichten oder QR-Einladungsparameter** werden durch den Service Worker gecacht.
+- **Offline:** Nach der ersten erfolgreichen Online-Ausführung ist die Oberfläche für lokal gespeicherte Daten offline nutzbar (Browser-Unterstützung vorausgesetzt). Gerät-zu-Gerät-Transfers und Pairing benötigen weiter eine erreichbare Signaling-Instanz und WebRTC-Verbindung. Dateien im Transfer Manager sind weiterhin nur in der aktuellen Sitzung vorhanden und überleben keinen App-Neustart.
+- **Installation:** LocalSync über `http://localhost:8787` oder vertrauenswürdiges **HTTPS** öffnen. Im Browsermenü „App installieren“ / „Zum Startbildschirm hinzufügen“ wählen. Die Installation benötigt einen sicheren Kontext; `http://192.168.x.x:8787` auf einem zweiten Gerät ist in der Regel **kein** sicherer Kontext und unterstützt daher Service Worker, PWA-Installation, Clipboard und Wake Lock meist nicht. Für echte Geräte Tests HTTPS mit einem vertrauenswürdigen Zertifikat/Reverse Proxy bereitstellen.
+- **Updates:** Der Service Worker nutzt einen versionierten Cache `localsync-shell-v6`; eine neue Version sollte den Cache-Namen ändern. Beim Wechsel von der Browser- zur installierten App bleibt die Origin-Isolation bestehen. `localhost`/LAN-IP/Domain sind unterschiedliche Origins mit getrennten Storage-Daten.
+- **Wichtig:** Die PWA ist keine Hintergrund-App; das Betriebssystem kann den Bildschirm sperren oder WebRTC pausieren. Wake Lock wirkt nur, solange Seite sichtbar und Browser/OS es unterstützen. Das Signaling ist ein **ungeschützter LAN-Prototyp** und sollte nicht öffentlich exponiert werden.
+
+### Installation als Delta v6
+
+Dieses ZIP über die **vollständige v5-Installation** entpacken. Enthalten sind die geänderten Dateien `index.html`, `css/style.css`, `js/app.js`, `server.js`, `README.md` sowie die neuen Dateien `manifest.webmanifest`, `sw.js` und vier PNG-Icons. Keine ES-Module oder externen JavaScript-Bibliotheken erforderlich.
+
+
+## Neu in v7 · Sitzung erstellen / Verbindung beitreten
+
+Der Dialog **Verbindung herstellen** ist in zwei eigenständige Bereiche aufgeteilt:
+
+- **Sitzung erstellen:** Mit **„Neue Sitzung erstellen“** wird eine kryptografisch zufällige Session-ID erzeugt und die SSE-/WebRTC-Signalisierung gestartet. Die ID ist kopierbar, dazu gibt es einen QR-Code und einen Einladungslink samt Kopierbutton. Die Server-Adresse kann für ein anderes Gerät auf eine erreichbare IP oder HTTPS-Domain geändert werden. Ein erneuter Klick erstellt eine neue Sitzung und beendet die vorherige.
+- **Verbindung beitreten:** Eine Session-ID (12–80 Buchstaben/Zahlen/`_`/`-`) oder ein Einladungslink (`http(s)://server/?room=…`) kann eingegeben und mit **„Verbinden“** verwendet werden. Bei einer ID ist die aktuelle Server-Adresse maßgeblich; bei einem Link zu einem anderen Origin navigiert die App auf die Server-Adresse aus dem Link, damit der Signaling-Endpunkt übereinstimmt. Bei gleicher Server-Adresse wird die Sitzung direkt betreten. Ein Aufruf des Einladungslinks tritt der Sitzung weiterhin automatisch bei.
+- Ohne gültigen Einladungslink wird beim Seitenstart **keine Sitzung automatisch erzeugt**. „Verbindung trennen“ verlässt die Sitzung. Der Topbar-Status und die Pull-only-Berechtigungen bleiben erhalten.
+- Die PWA-Version erhöht den Service-Worker-Cache auf `localsync-shell-v7`, damit das neue HTML und JavaScript sauber eingespielt werden. Ein vollständiger WebRTC-Test zwischen zwei echten Geräten wird weiterhin empfohlen.
+
+### Installation als Delta v7
+
+`LocalSync-Delta-v7.zip` auf eine vollständige **v6-Installation** entpacken und die geänderten Dateien überschreiben (`index.html`, `css/style.css`, `js/app.js`, `sw.js` und `README.md`). Die übrigen Dateien bleiben unverändert. Keine ES-Module und keine zusätzlichen Abhängigkeiten.

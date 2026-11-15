@@ -13,7 +13,7 @@ const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 8787);
 const HOST = process.env.HOST || '0.0.0.0';
 const rooms = new Map();
-const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.md': 'text/plain; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml' };
+const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.md': 'text/plain; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json; charset=utf-8' };
 function sendJson(res, code, body) { res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(JSON.stringify(body)); }
 function validRoom(room) { return typeof room === 'string' && /^[a-zA-Z0-9_-]{12,80}$/.test(room); }
 function validClient(client) { return typeof client === 'string' && /^[a-f0-9]{24}$/.test(client); }
@@ -59,12 +59,12 @@ function onStatic(req, res, url) {
   let pathname;
   try { pathname = decodeURIComponent(url.pathname); } catch { return sendJson(res, 400, { error: 'Invalid pathname.' }); }
   if (pathname === '/') pathname = '/index.html';
-  const allowed = /^\/(index\.html|css\/style\.css|js\/(app|storage|files|peer|qr)\.js)$/;
+  const allowed = /^\/(index\.html|manifest\.webmanifest|sw\.js|css\/style\.css|js\/(app|storage|files|peer|qr)\.js|assets\/icon-(180|192|512|maskable-512)\.png)$/;
   if (!allowed.test(pathname)) return sendJson(res, 404, { error: 'Not found.' });
   const file = path.join(ROOT, pathname);
   fs.readFile(file, (err, data) => {
     if (err) return sendJson(res, 404, { error: 'Not found.' });
-    res.writeHead(200, { 'content-type': mime[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' });
+    res.writeHead(200, { 'content-type': mime[path.extname(file)] || 'application/octet-stream', 'cache-control': pathname === '/sw.js' ? 'no-cache' : 'no-store', 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' });
     res.end(data);
   });
 }
